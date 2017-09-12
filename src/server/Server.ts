@@ -1,14 +1,14 @@
 import * as WS from 'ws';
-import * as Emitter from 'component-emitter';
+import * as events from 'events';
 import * as http from 'http';
 import * as https from 'https';
 import { ServerConfig } from './ServerConfig';
 import { Socket } from './../common/Socket';
 
-export class Server extends Emitter {
+export class Server extends events.EventEmitter {
 
     /**
-     * 原始的websocket对象
+     * 被包装的websocket对象
      * 
      * @type {WS.Server}
      * @memberof Server
@@ -82,7 +82,7 @@ export class Server extends Emitter {
 
         this._ws = new WS.Server(config);
         this._ws.on('error', this.emit.bind(this, 'error'));
-        this._ws.on('listening', this.emit.bind(this, 'error'));
+        this._ws.on('listening', this.emit.bind(this, 'listening'));
         this._ws.on('connection', (client) => {
             const socket = new Socket(client);
             this.onConnection(socket);
@@ -123,6 +123,7 @@ export class Server extends Emitter {
     close(): Promise<void> {
         return new Promise((resolve, reject) => {
             this._ws.close(err => {
+                this.emit('close', err);
                 err ? reject(err) : resolve();
             });
         });
