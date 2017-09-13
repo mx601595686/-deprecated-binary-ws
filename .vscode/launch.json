@@ -7,6 +7,15 @@
         {
             "type": "node",
             "request": "launch",
+            "name": "开发调试",
+            "program": "${workspaceRoot}/node_modules/ts-node/dist/_bin.js",
+            "args": [
+                "${workspaceRoot}/test/development-test/index.ts"
+            ]
+        },
+        {
+            "type": "node",
+            "request": "launch",
             "name": "测试调试",
             "program": "${workspaceRoot}/node_modules/mocha/bin/_mocha",
             "args": [

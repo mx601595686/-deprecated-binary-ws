@@ -1,46 +1,48 @@
 {
-    "name": "binary-ws",
-    "version": "0.0.1",
-    "description": "Simply serialize the data into binary and use websocket transfer between the browser and the server",
-    "main": "./bin/index.js",
-    "types": "./bin/index.d.ts",
-    "scripts": {
-        "test": "./node_modules/.bin/mocha --compilers ts:ts-node/register,tsx:ts-node/register",
-        "compile": "./node_modules/.bin/gulp compile"
-    },
-    "repository": {
-        "type": "git",
-        "url": "git+https://github.com/mx601595686/binary-ws.git"
-    },
-    "keywords": [
-        "binary",
-        "ws",
-        "websocket"
-    ],
-    "author": "wujingtao",
-    "license": "MIT",
-    "bugs": {
-        "url": "https://github.com/mx601595686/binary-ws/issues"
-    },
-    "homepage": "https://github.com/mx601595686/binary-ws#readme",
-    "devDependencies": {
-        "@types/expect.js": "^0.3.29",
-        "@types/fs-extra": "^4.0.0",
-        "@types/mocha": "^2.2.40",
-        "@types/node": "^7.0.13",
-        "expect.js": "^0.3.1",
-        "gulp": "^3.9.1",
-        "gulp-sourcemaps": "^2.4.1",
-        "gulp-typescript": "^3.1.5",
-        "mocha": "^3.2.0",
-        "ts-node": "^3.0.4",
-        "typescript": "^2.2.2"
-    },
-    "dependencies": {
-        "@types/ws": "^3.0.2",
-        "@types/component-emitter": "^1.2.6",
-        "component-emitter": "^1.2.1",
-        "fs-extra": "^4.0.1",
-        "ws": "^3.1.0"
-    }
+  "name": "binary-ws",
+  "version": "0.0.1",
+  "description": "Simply serialize the data into binary and use websocket transfer between the browser and the server",
+  "main": "./bin/index.js",
+  "types": "./bin/index.d.ts",
+  "scripts": {
+    "test": "./node_modules/.bin/mocha --compilers ts:ts-node/register,tsx:ts-node/register",
+    "compile": "./node_modules/.bin/gulp compile"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mx601595686/binary-ws.git"
+  },
+  "keywords": [
+    "binary",
+    "ws",
+    "websocket"
+  ],
+  "author": "wujingtao",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/mx601595686/binary-ws/issues"
+  },
+  "homepage": "https://github.com/mx601595686/binary-ws#readme",
+  "devDependencies": {
+    "@types/component-emitter": "^1.2.6",
+    "@types/ws": "^3.0.2",
+    "@types/expect.js": "^0.3.29",
+    "@types/fs-extra": "^4.0.0",
+    "@types/mocha": "^2.2.40",
+    "@types/node": "^7.0.13",
+    "expect.js": "^0.3.1",
+    "gulp": "^3.9.1",
+    "gulp-sourcemaps": "^2.4.1",
+    "gulp-typescript": "^3.1.5",
+    "mocha": "^3.2.0",
+    "ts-node": "^3.0.4",
+    "typescript": "^2.2.2"
+  },
+  "dependencies": {
+    "buffer": "^5.0.7",
+    "component-emitter": "^1.2.1",
+    "fs-extra": "^4.0.1",
+    "is-buffer": "^1.1.5",
+    "ws": "^3.1.0"
+  }
 }

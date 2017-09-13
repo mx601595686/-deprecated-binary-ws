@@ -1,5 +1,6 @@
 import * as WS from 'ws';
 import * as Emitter from 'component-emitter';
+
 export class Socket extends Emitter {
 
     private static _id_Number = 0;

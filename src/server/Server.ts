@@ -139,4 +139,26 @@ export class Server extends events.EventEmitter {
         super.on(event, listener);
         return this;
     }
+
+    addListener(event: 'error', cb: (err: Error) => void): this
+    /**
+     * 当服务器开始监听
+     */
+    addListener(event: 'listening', cb: () => void): this
+    addListener(event: 'close', cb: (err: Error) => void): this
+    addListener(event: string, listener: Function): this {
+        super.addListener(event, listener);
+        return this;
+    }
+
+    once(event: 'error', cb: (err: Error) => void): this
+    /**
+     * 当服务器开始监听
+     */
+    once(event: 'listening', cb: () => void): this
+    once(event: 'close', cb: (err: Error) => void): this
+    once(event: string, listener: Function): this {
+        super.once(event, listener);
+        return this;
+    }
 }
