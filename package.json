@@ -39,10 +39,13 @@
     "typescript": "^2.2.2"
   },
   "dependencies": {
+    "blob-to-buffer": "^1.2.6",
     "buffer": "^5.0.7",
     "component-emitter": "^1.2.1",
     "fs-extra": "^4.0.1",
     "is-buffer": "^1.1.5",
+    "to-arraybuffer": "^1.0.1",
+    "typedarray-to-buffer": "^3.1.2",
     "ws": "^3.1.0"
   }
 }

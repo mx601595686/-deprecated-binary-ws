@@ -3,7 +3,7 @@ import { ReadyState } from "./ReadyState";
 import { ClientConfig } from './ClientConfig';
 import { DataType } from '../common/DataType';
 const isBuffer = require('is-buffer');
-const _Buffer: typeof Buffer = Buffer ? Buffer : require('buffer');  // 确保浏览器下也能使用Buffer
+const _Buffer: typeof Buffer = Buffer ? Buffer : require('buffer/').Buffer;  // 确保浏览器下也能使用Buffer
 
 /**
  * Socket 接口的抽象类，定义了socket需要实现的基础功能
