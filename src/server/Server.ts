@@ -66,7 +66,7 @@ export class Server extends events.EventEmitter {
             verifyClient: (info: any, cb: any) => {
                 this.verifyClient(info.req, info.origin, info.secure).then(cb);
             },
-            clientTracking: false,  //WS不在server.clients中保存客户端连接
+            // clientTracking: false,  //WS不在server.clients中保存客户端连接
         };
 
         if (args[0] instanceof (<any>http).Server || args[0] instanceof (<any>https).Server) {
