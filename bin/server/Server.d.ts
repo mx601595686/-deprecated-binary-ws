@@ -1,14 +1,14 @@
-/// <reference types="ws" />
 /// <reference types="node" />
+/// <reference types="ws" />
 import * as WS from 'ws';
-import * as Emitter from 'component-emitter';
+import * as events from 'events';
 import * as http from 'http';
 import * as https from 'https';
 import { ServerConfig } from './ServerConfig';
-import { Socket } from './../common/Socket';
-export declare class Server extends Emitter {
+import { Socket } from './Socket';
+export declare class Server extends events.EventEmitter {
     /**
-     * 原始的websocket对象
+     * 被包装的websocket对象
      *
      * @type {WS.Server}
      * @memberof Server
@@ -17,7 +17,7 @@ export declare class Server extends Emitter {
     /**
      * 保存所有客户端连接。key是socket.id
      */
-    readonly clients: Map<string, Socket>;
+    readonly clients: Map<number, Socket>;
     /**
      * 创建websocket服务器。
      * @memberof Server
@@ -65,23 +65,40 @@ export declare class Server extends Emitter {
      */
     verifyClient(req: http.IncomingMessage, origin: string, secure: boolean): Promise<boolean>;
     /**
-     * 当有新的客户端与服务器建立起连接
-     *
-     * @param {Socket} socket 接口
-     * @memberof Server
-     */
-    onConnection(socket: Socket): void;
-    /**
      * 关闭服务器，并断开所有的客户端连接
      *
-     * @returns {Promise<void>}
+     * @returns {void}
      * @memberof Server
      */
-    close(): Promise<void>;
+    close(): void;
     on(event: 'error', cb: (err: Error) => void): this;
     /**
      * 当服务器开始监听
      */
     on(event: 'listening', cb: () => void): this;
+    /**
+     * 当有新的客户端与服务器建立起连接
+     */
+    on(event: 'connection', cb: (socket: Socket) => void): this;
     on(event: 'close', cb: (err: Error) => void): this;
+    addListener(event: 'error', cb: (err: Error) => void): this;
+    /**
+     * 当服务器开始监听
+     */
+    addListener(event: 'listening', cb: () => void): this;
+    /**
+     * 当有新的客户端与服务器建立起连接
+     */
+    addListener(event: 'connection', cb: (socket: Socket) => void): this;
+    addListener(event: 'close', cb: (err: Error) => void): this;
+    once(event: 'error', cb: (err: Error) => void): this;
+    /**
+     * 当服务器开始监听
+     */
+    once(event: 'listening', cb: () => void): this;
+    /**
+     * 当有新的客户端与服务器建立起连接
+     */
+    once(event: 'connection', cb: (socket: Socket) => void): this;
+    once(event: 'close', cb: (err: Error) => void): this;
 }
