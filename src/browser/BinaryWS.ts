@@ -1,10 +1,9 @@
-import { ClientConfig } from './../common/ClientConfig';
-import BaseSocket from "../common/BaseSocket";
-import { ReadyState } from "../common/ReadyState";
-const typedToBuffer = require('typedarray-to-buffer');
 const blobToBuffer = require('blob-to-buffer');
 const toArrayBuffer = require('to-arraybuffer');
-const isBuffer = require('is-buffer');
+
+import { BaseSocketConfig } from './../common/BaseSocketConfig';
+import { BaseSocket } from "../common/BaseSocket";
+import { ReadyState } from "../common/ReadyState";
 
 export default class BinaryWS extends BaseSocket {
 
@@ -25,9 +24,9 @@ export default class BinaryWS extends BaseSocket {
     /**
      * @param configs 端口的配置
      */
-    constructor(configs: ClientConfig)
+    constructor(configs: BaseSocketConfig)
     constructor(args?: any) {
-        const cf: ClientConfig = {
+        const cf: BaseSocketConfig = {
             url: `ws${location.protocol === 'https:' ? 's' : ''}://${location.host}`
         }
 
@@ -52,10 +51,7 @@ export default class BinaryWS extends BaseSocket {
         data = data ? data.map(item => {
             if (item instanceof Blob) {
                 return blobToBuffer(item);
-            } else if (!isBuffer(item) && item instanceof ArrayBuffer) {
-                return typedToBuffer(item);
             }
-
             return item;
         }) : undefined;
         return super.send(messageName, data, needACK);

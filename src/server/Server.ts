@@ -3,7 +3,7 @@ import * as events from 'events';
 import * as http from 'http';
 import * as https from 'https';
 import { ServerConfig } from './ServerConfig';
-import { Socket } from './../common/Socket';
+import { Socket } from './Socket';
 
 export class Server extends events.EventEmitter {
 
@@ -18,7 +18,7 @@ export class Server extends events.EventEmitter {
     /**
      * 保存所有客户端连接。key是socket.id
      */
-    readonly clients: Map<string, Socket> = new Map();
+    readonly clients: Map<number, Socket> = new Map();
 
     /**
      * 创建websocket服务器。
@@ -85,8 +85,9 @@ export class Server extends events.EventEmitter {
         this._ws.on('listening', this.emit.bind(this, 'listening'));
         this._ws.on('connection', (client) => {
             const socket = new Socket(client);
-            this.onConnection(socket);
             this.clients.set(socket.id, socket);
+            this.emit('connection', socket);
+
             socket.on('close', () => {
                 this.clients.delete(socket.id);
             });
@@ -107,25 +108,14 @@ export class Server extends events.EventEmitter {
     }
 
     /**
-     * 当有新的客户端与服务器建立起连接
-     * 
-     * @param {Socket} socket 接口
-     * @memberof Server
-     */
-    onConnection(socket: Socket) { }
-
-    /**
      * 关闭服务器，并断开所有的客户端连接
      * 
-     * @returns {Promise<void>} 
+     * @returns {void} 
      * @memberof Server
      */
-    close(): Promise<void> {
-        return new Promise((resolve, reject) => {
-            this._ws.close(err => {
-                this.emit('close', err);
-                err ? reject(err) : resolve();
-            });
+    close() {
+        this._ws.close(err => {
+            this.emit('close', err);
         });
     }
 
@@ -134,6 +124,10 @@ export class Server extends events.EventEmitter {
      * 当服务器开始监听
      */
     on(event: 'listening', cb: () => void): this
+    /**
+     * 当有新的客户端与服务器建立起连接
+     */
+    on(event: 'connection', cb: (socket: Socket) => void): this
     on(event: 'close', cb: (err: Error) => void): this
     on(event: string, listener: Function): this {
         super.on(event, listener);
@@ -145,6 +139,10 @@ export class Server extends events.EventEmitter {
      * 当服务器开始监听
      */
     addListener(event: 'listening', cb: () => void): this
+    /**
+     * 当有新的客户端与服务器建立起连接
+     */
+    addListener(event: 'connection', cb: (socket: Socket) => void): this
     addListener(event: 'close', cb: (err: Error) => void): this
     addListener(event: string, listener: Function): this {
         super.addListener(event, listener);
@@ -156,6 +154,10 @@ export class Server extends events.EventEmitter {
      * 当服务器开始监听
      */
     once(event: 'listening', cb: () => void): this
+    /**
+     * 当有新的客户端与服务器建立起连接
+     */
+    once(event: 'connection', cb: (socket: Socket) => void): this
     once(event: 'close', cb: (err: Error) => void): this
     once(event: string, listener: Function): this {
         super.once(event, listener);

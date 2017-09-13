@@ -1,14 +1,16 @@
 import * as Emitter from 'component-emitter';
-import { ReadyState } from "./ReadyState";
-import { ClientConfig } from './ClientConfig';
-import { DataType } from '../common/DataType';
 const isBuffer = require('is-buffer');
 const _Buffer: typeof Buffer = Buffer ? Buffer : require('buffer/').Buffer;  // 确保浏览器下也能使用Buffer
+const typedToBuffer = require('typedarray-to-buffer');
+
+import { ReadyState } from "./ReadyState";
+import { BaseSocketConfig } from './BaseSocketConfig';
+import { DataType } from '../common/DataType';
 
 /**
  * Socket 接口的抽象类，定义了socket需要实现的基础功能
  */
-export default abstract class BaseSocket extends Emitter {
+export abstract class BaseSocket extends Emitter {
 
     /**
      * _messageID 的ID号，id从0开始。每发一条needACK的消息，该id加1
@@ -42,6 +44,21 @@ export default abstract class BaseSocket extends Emitter {
     private readonly _needDeserialize: boolean;
 
     /**
+     * 发送ping来检查连接是否正常的间隔时间。
+     * 连续失败3次就会断开连接
+     * 
+     * @private
+     * @type {number}
+     * @memberof BaseSocket
+     */
+    private readonly _pingInterval: number = 1000 * 20;
+
+    /**
+     * 收到客户端发来ping时的时间戳
+     */
+    private _receivedPing: number = 0;
+
+    /**
      * 保存被包装的socket对象
      * 
      * @type {*}
@@ -50,13 +67,20 @@ export default abstract class BaseSocket extends Emitter {
     readonly socket: any;
 
     /**
-     * WebSocket server 的URL地址
+     * WebSocket server 的URL地址   
+     * 注意：如果是Server生成的Socket，则url为空
      * 
      * @type {string}
      * @memberof BaseSocket
      */
     readonly url: string;
 
+    /**
+     * 当前接口运行所处的平台
+     * 
+     * @type {("browser" | "node")}
+     * @memberof BaseSocket
+     */
     readonly platform: "browser" | "node";
 
     /**
@@ -82,10 +106,10 @@ export default abstract class BaseSocket extends Emitter {
     /**
      * @param {*} socket 子类实例化的socket对象
      * @param {("browser" | "node")} platform 指示该接口所处的平台
-     * @param {ClientConfig} configs 配置
+     * @param {BaseSocketConfig} configs 配置
      * @memberof BaseSocket
      */
-    constructor(socket: any, platform: "browser" | "node", configs: ClientConfig) {
+    constructor(socket: any, platform: "browser" | "node", configs: BaseSocketConfig) {
         super();
 
         const {
@@ -101,6 +125,8 @@ export default abstract class BaseSocket extends Emitter {
         this._needDeserialize = needDeserialize;
         this.socket = socket;
         this.platform = platform;
+
+        this.monitorPing();
     }
 
     /**
@@ -159,6 +185,16 @@ export default abstract class BaseSocket extends Emitter {
                         type.writeUInt8(DataType.null, 0);
 
                         bufferItems.push(type);
+                    } else if (item instanceof ArrayBuffer && !isBuffer(item)) {
+                        //针对ArrayBuffer的情况
+                        const type = _Buffer.alloc(1);
+                        const content = typedToBuffer(item);
+                        const contentLength = _Buffer.alloc(8);
+
+                        type.writeUInt8(DataType.Buffer, 0);
+                        contentLength.writeDoubleBE(content.length, 0);
+
+                        bufferItems.push(type, contentLength, content);
                     } else if (isBuffer(item)) {
                         const type = _Buffer.alloc(1);
                         const content = item;
@@ -315,6 +351,37 @@ export default abstract class BaseSocket extends Emitter {
     }
 
     /**
+     * 启动ping检查连接是否正常
+     * 
+     * @private
+     * @memberof BaseSocket
+     */
+    private monitorPing() {
+        let timer: NodeJS.Timer;
+        let lastTime: number = 0;    //上一次收到ping的时间
+        let failuresNumber = 0;      //连续失败的次数。最多连续3次就断开连接
+
+        this.on('open', () => {
+            timer = setInterval(() => {
+                if (this._receivedPing > lastTime) {
+                    lastTime = this._receivedPing;
+                    failuresNumber = 0;
+                } else if (failuresNumber++ > 3) {
+                    this.emit('error', new Error('ping接收端，一分钟内无应答'));
+                    clearInterval(timer);
+                    this.close();
+                }
+
+                this._sendInternal('ping');
+            }, this._pingInterval);
+        });
+
+        this.on('close', () => {
+            clearInterval(timer);
+        });
+    }
+
+    /**
      * 发送数据。发送失败直接抛出异常
      * 
      * @param {string} messageName 消息的名称(标题)
@@ -357,6 +424,19 @@ export default abstract class BaseSocket extends Emitter {
     }
 
     /**
+     * 发送内部数据。   
+     * 注意：所有发送的内部消息都是不需要对方验证是否收到的。如果发送时出现错误会自动触发error事件
+     * 
+     * @protected
+     * @param {string} messageName 消息名称
+     * @param {...any[]} data 其余数据
+     * @memberof BaseSocket
+     */
+    protected _sendInternal(messageName: string, ...data: any[]) {
+        return this.send('__bws_internal__', [messageName, ...data], false).catch(err => this.emit('error', err));
+    }
+
+    /**
      * 需要子类覆写。调用_socket发送数据
      * 
      * @protected
@@ -384,17 +464,21 @@ export default abstract class BaseSocket extends Emitter {
                     const callback = this._message.get(body[1]);
                     callback && callback();
                     break;
+
+                case 'ping':
+                    this._receivedPing = (new Date).getTime();
+                    break;
             }
         } else {
             const body = this._needDeserialize ? BaseSocket.deserialize(data.slice(header.headerLength)) : data.slice(header.headerLength);
 
             if (header.needACK) {
-                if (this._receivedMessageID < header.messageID) {   //确保不会重复触发
+                if (this._receivedMessageID < header.messageID) {   //确保不会重复接收
                     this._receivedMessageID = header.messageID;
                     this.emit('message', header.messageName, body);
                 }
 
-                this.send('__bws_internal__', ['ack', header.messageID], false);
+                this._sendInternal('ack', header.messageID);
             } else {
                 this.emit('message', header.messageName, body);
             }
@@ -412,11 +496,11 @@ export default abstract class BaseSocket extends Emitter {
 
     on(event: 'error', cb: (err: Error) => void): this
     /**
-     * 当服务器开始监听
+     * 当收到消息
      */
     on(event: 'message', cb: (messageName: string, data: any[]) => void): this
     /**
-     * 当服务器开始监听
+     * 当连接建立
      */
     on(event: 'open', cb: () => void): this
     on(event: 'close', cb: (err: Error) => void): this
@@ -427,11 +511,11 @@ export default abstract class BaseSocket extends Emitter {
 
     once(event: 'error', cb: (err: Error) => void): this
     /**
-     * 当服务器开始监听
+     * 当收到消息
      */
     once(event: 'message', cb: (messageName: string, data: any[]) => void): this
     /**
-     * 当服务器开始监听
+     * 当连接建立
      */
     once(event: 'open', cb: () => void): this
     once(event: 'close', cb: (err: Error) => void): this
