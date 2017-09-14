@@ -62,11 +62,10 @@ export class Server extends events.EventEmitter {
         const config: ServerConfig & { verifyClient: WS.VerifyClientCallbackAsync } = {
             host: '0.0.0.0',
             port: 8080,
-            maxPayload: 1024 * 1024 * 10,
             verifyClient: (info, cb) => {
                 this.verifyClient(info.req, info.origin, info.secure).then((result => {
                     if (typeof result === 'boolean') {
-                        cb(result)
+                        cb(result);
                     } else {
                         cb(result.res, result.code, result.message);
                     }
@@ -76,15 +75,16 @@ export class Server extends events.EventEmitter {
 
         if (args[0] instanceof (<any>http).Server || args[0] instanceof (<any>https).Server) {
             config.server = args[0];
-            config.host = undefined;    //必须清除，否则WS内部会单独创建一个http server
+            config.host = undefined;    //必须清除，否则WS内部会另外创建一个http server
             config.port = undefined;
+        } else if (typeof args[0] === 'number') {
+            config.port = args[0];
         } else if (typeof args[0] === 'string') {
             config.host = args[0];
             if (typeof args[1] === 'number')
                 config.port = args[1];
         } else if (typeof args[0] === 'object') {
             Object.assign(config, args[0]);
-            config.maxPayload = config.maxPayload === undefined || config.maxPayload < 1024 ? 1024 : config.maxPayload;
         }
 
         this._ws = new WS.Server(config);

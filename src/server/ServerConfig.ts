@@ -27,7 +27,7 @@ export interface ServerConfig {
     path?: string;
 
     /**
-     * 单条消息的最大大小（byte）。默认1024 x 1024 x 10。最小1024
+     * 单条消息的最大大小（byte）。
      */
     maxPayload?: number;
 }
