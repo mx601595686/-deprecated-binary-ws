@@ -11,6 +11,12 @@ import { CertMeta } from "ws";
  */
 export interface ServerSocketConfig extends BaseSocketConfig {
     /**
+     *  An object with custom headers to send along with the request.
+     */
+    headers?: {
+        [key: string]: string;
+    };
+    /**
      * The certificate key.
      *
      * @type {CertMeta}

@@ -11,6 +11,12 @@ import { CertMeta } from "ws";
  * @extends {BaseSocketConfig}
  */
 export interface ServerSocketConfig extends BaseSocketConfig {
+
+    /**
+     *  An object with custom headers to send along with the request.
+     */
+    headers?: { [key: string]: string };
+
     /**
      * The certificate key.
      * 
@@ -18,6 +24,7 @@ export interface ServerSocketConfig extends BaseSocketConfig {
      * @memberof ServerSocketConfig
      */
     cert?: CertMeta;
+
     /**
      * The private key.
      * 
@@ -25,6 +32,7 @@ export interface ServerSocketConfig extends BaseSocketConfig {
      * @memberof ServerSocketConfig
      */
     key?: CertMeta;
+
     /**
      * The private key, certificate, and CA certs.
      * 
@@ -32,6 +40,7 @@ export interface ServerSocketConfig extends BaseSocketConfig {
      * @memberof ServerSocketConfig
      */
     pfx?: string | Buffer;
+
     /**
      *  Trusted certificates.
      * 

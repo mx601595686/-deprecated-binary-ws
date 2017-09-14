@@ -59,25 +59,32 @@ export class Server extends events.EventEmitter {
     constructor(...args: any[]) {
         super();
 
-        const config: ServerConfig | any = {
+        const config: ServerConfig & { verifyClient: WS.VerifyClientCallbackAsync } = {
             host: '0.0.0.0',
             port: 8080,
             maxPayload: 1024 * 1024 * 10,
-            verifyClient: (info: any, cb: any) => {
-                this.verifyClient(info.req, info.origin, info.secure).then(cb);
-            },
-            // clientTracking: false,  //WS不在server.clients中保存客户端连接
+            verifyClient: (info, cb) => {
+                this.verifyClient(info.req, info.origin, info.secure).then((result => {
+                    if (typeof result === 'boolean') {
+                        cb(result)
+                    } else {
+                        cb(result.res, result.code, result.message);
+                    }
+                }));
+            }
         };
 
         if (args[0] instanceof (<any>http).Server || args[0] instanceof (<any>https).Server) {
             config.server = args[0];
+            config.host = undefined;    //必须清除，否则WS内部会单独创建一个http server
+            config.port = undefined;
         } else if (typeof args[0] === 'string') {
             config.host = args[0];
             if (typeof args[1] === 'number')
                 config.port = args[1];
         } else if (typeof args[0] === 'object') {
             Object.assign(config, args[0]);
-            config.maxPayload = config.maxPayload < 1024 ? 1024 : config.maxPayload;
+            config.maxPayload = config.maxPayload === undefined || config.maxPayload < 1024 ? 1024 : config.maxPayload;
         }
 
         this._ws = new WS.Server(config);
@@ -95,15 +102,21 @@ export class Server extends events.EventEmitter {
     }
 
     /**
-     * 判断是否接受新的连接
+     * 判断是否接受新的连接。    
+     * 返回true表示接受，返回false表示拒绝。也可以返回一个对象，提供更多信息。  
+     *  
+     * 返回对象：    
+     *      res {Boolean} Whether or not to accept the handshake.   
+     *      code {Number} When result is false this field determines the HTTP error status code to be sent to the client.   
+     *      name {String} When result is false this field determines the HTTP reason phrase.   
      * 
      * @param {string} origin The value in the Origin header indicated by the client.
      * @param {boolean} secure 'true' if req.connection.authorized or req.connection.encrypted is set.
      * @param {http.IncomingMessage} req The client HTTP GET request.
-     * @returns {Promise<boolean>} 
+     * @returns {Promise<boolean | { res: boolean, code?: number, message?: string }>} 
      * @memberof Server
      */
-    verifyClient(req: http.IncomingMessage, origin: string, secure: boolean): Promise<boolean> {
+    verifyClient(req: http.IncomingMessage, origin: string, secure: boolean): Promise<boolean | { res: boolean, code?: number, message?: string }> {
         return Promise.resolve(true);
     }
 

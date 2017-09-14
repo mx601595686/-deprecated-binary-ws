@@ -55,15 +55,25 @@ export declare class Server extends events.EventEmitter {
      */
     constructor(options: ServerConfig);
     /**
-     * 判断是否接受新的连接
+     * 判断是否接受新的连接。
+     * 返回true表示接受，返回false表示拒绝。也可以返回一个对象，提供更多信息。
+     *
+     * 返回对象：
+     *      res {Boolean} Whether or not to accept the handshake.
+     *      code {Number} When result is false this field determines the HTTP error status code to be sent to the client.
+     *      name {String} When result is false this field determines the HTTP reason phrase.
      *
      * @param {string} origin The value in the Origin header indicated by the client.
      * @param {boolean} secure 'true' if req.connection.authorized or req.connection.encrypted is set.
      * @param {http.IncomingMessage} req The client HTTP GET request.
-     * @returns {Promise<boolean>}
+     * @returns {Promise<boolean | { res: boolean, code?: number, message?: string }>}
      * @memberof Server
      */
-    verifyClient(req: http.IncomingMessage, origin: string, secure: boolean): Promise<boolean>;
+    verifyClient(req: http.IncomingMessage, origin: string, secure: boolean): Promise<boolean | {
+        res: boolean;
+        code?: number;
+        message?: string;
+    }>;
     /**
      * 关闭服务器，并断开所有的客户端连接
      *
