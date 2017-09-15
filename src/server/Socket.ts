@@ -24,14 +24,6 @@ export class Socket extends BaseSocket {
 
     readonly socket: WS;
 
-    get readyState(): ReadyState {
-        return this.socket.readyState as any;
-    }
-
-    get bufferedAmount(): number {
-        return this.socket.bufferedAmount;
-    }
-
     /**
      * @param {string} url 服务器地址
      */
@@ -52,12 +44,12 @@ export class Socket extends BaseSocket {
             } else if (typeof args === 'object') {
                 Object.assign(cf, args);
             }
-            
+
             socket = new WS(cf.url, cf);
         }
 
         socket.on('open', () => this.emit('open'));
-        socket.on('close', () => this.emit('close'));
+        socket.on('close', (code: number, reason: string) => this.emit('close', code, reason));
         socket.on('error', (err) => this.emit('error', err));
         socket.on('message', (data: Buffer) => this._receiveData(data));
 

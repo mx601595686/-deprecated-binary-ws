@@ -9,14 +9,6 @@ export default class BinaryWS extends BaseSocket {
 
     readonly socket: WebSocket;
 
-    get readyState(): ReadyState {
-        return this.socket.readyState as any;
-    }
-
-    get bufferedAmount(): number {
-        return this.socket.bufferedAmount;
-    }
-
     /**
      * @param {string} url 服务器地址，如果不指定，默认连接的是当前域名下的根
      */
@@ -39,15 +31,15 @@ export default class BinaryWS extends BaseSocket {
         const socket = new WebSocket(cf.url);
         socket.binaryType = 'arraybuffer';
         socket.onopen = () => this.emit('open');
-        socket.onclose = () => this.emit('close');
-        socket.onerror = (err) => { console.error(err), this.emit('error', new Error(err.toString())); }
+        socket.onclose = (ev) => this.emit('close', ev.code, ev.reason);
+        socket.onerror = (err) => { console.error(err), this.emit('error', new Error('连接错误')); }
         socket.onmessage = (e) => this._receiveData(e.data);
 
         super(socket, 'browser', cf);
     }
 
-    send(messageName: string, data?: any[], needACK: boolean = true): Promise<void> {
-        // 检查将要序列化的元素中是否包含ArrayBuffer或Blob
+    send(messageName: string, data?: any[], needACK: boolean = true): Promise<number> {
+        // 检查将要序列化的元素中是否包含Blob
         data = data ? data.map(item => {
             if (item instanceof Blob) {
                 return blobToBuffer(item);
@@ -60,11 +52,18 @@ export default class BinaryWS extends BaseSocket {
     protected _sendData(data: Buffer): Promise<void> {
         return new Promise((resolve, reject) => {
             this.socket.send(toArrayBuffer(data));
-            const timer = setInterval(() => {
-                if (this.bufferedAmount === 0) {
-                    resolve();
-                }
-            }, 100);
+
+            const check = (interval: number) => {
+                setTimeout(() => {
+                    if (this.socket.bufferedAmount === 0) {
+                        resolve();
+                    } else {
+                        check(interval >= 2000 ? 2000 : interval * 2); //最慢2秒检查一次
+                    }
+                }, interval);
+            }
+
+            check(10);
         });
     }
 

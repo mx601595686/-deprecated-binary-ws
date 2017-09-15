@@ -3,7 +3,6 @@
 import * as WS from 'ws';
 import { ServerSocketConfig } from './ServerSocketConfig';
 import { BaseSocket } from "../common/BaseSocket";
-import { ReadyState } from "../common/ReadyState";
 export declare class Socket extends BaseSocket {
     /**
      * 每新建一个接口+1
@@ -20,8 +19,6 @@ export declare class Socket extends BaseSocket {
      */
     readonly id: number;
     readonly socket: WS;
-    readonly readyState: ReadyState;
-    readonly bufferedAmount: number;
     /**
      * @param {string} url 服务器地址
      */

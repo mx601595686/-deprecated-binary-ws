@@ -1,4 +1,5 @@
 import * as Emitter from 'component-emitter';
+import * as WS from 'ws';
 const isBuffer = require('is-buffer');
 const _Buffer: typeof Buffer = Buffer ? Buffer : require('buffer/').Buffer;  // 确保浏览器下也能使用Buffer
 const typedToBuffer = require('typedarray-to-buffer');
@@ -6,6 +7,7 @@ const typedToBuffer = require('typedarray-to-buffer');
 import { ReadyState } from "./ReadyState";
 import { BaseSocketConfig } from './BaseSocketConfig';
 import { DataType } from '../common/DataType';
+import { QueueData } from './QueueData';
 
 /**
  * Socket 接口的抽象类，定义了socket需要实现的基础功能
@@ -13,58 +15,27 @@ import { DataType } from '../common/DataType';
 export abstract class BaseSocket extends Emitter {
 
     /**
-     * _messageID 的ID号，id从0开始。每发一条needACK的消息，该id加1
+     * _messageID 的ID号，id从0开始。每发一条消息，该id加1
      * 
      * @private
      * @memberof BaseSocket
      */
     private _messageID = 0;
 
-    /**
-     * 接收到的messageID编号
-     * 
-     * @private
-     * @memberof BaseSocket
-     */
-    private _receivedMessageID = -1;
-
-    /**
-     * 保存接收接收端发回的确认消息的回调函数
-     * key:_messageID
-     * 
-     * @private
-     * @memberof BaseSocket
-     */
-    private readonly _message: Map<number, Function> = new Map();
-
-    private readonly _sendingTimeout: number;
-
-    private readonly _sendingRetry: number;
-
     private readonly _needDeserialize: boolean;
 
     /**
-     * 发送ping来检查连接是否正常的间隔时间。
-     * 连续失败3次就会断开连接
-     * 
-     * @private
-     * @type {number}
-     * @memberof BaseSocket
+     * 等待发送消息的队列。key：messageID。
      */
-    private readonly _pingInterval: number = 1000 * 20;
-
-    /**
-     * 收到客户端发来ping时的时间戳
-     */
-    private _receivedPing: number = 0;
+    private readonly _queue: Map<number, QueueData> = new Map();
 
     /**
      * 保存被包装的socket对象
      * 
-     * @type {*}
+     * @type {(WebSocket|WS)}
      * @memberof BaseSocket
      */
-    readonly socket: any;
+    readonly socket: WebSocket | WS;
 
     /**
      * WebSocket server 的URL地址   
@@ -91,42 +62,41 @@ export abstract class BaseSocket extends Emitter {
      * @type {ReadyState}
      * @memberof BaseSocket
      */
-    abstract get readyState(): ReadyState;
+    get readyState(): ReadyState {
+        return this.socket.readyState;
+    }
 
     /**
-     * 调用 send() 方法将多字节数据加入到队列中等待传输，但是还未发出。该值会在所有队列数据被发送后重置为 0。而当连接关闭时不会设为0。如果持续调用send()，这个值会持续增长。
+     * 在缓冲队列中等待发送的数据字节数
      * 
      * @readonly
      * @abstract
      * @type {number}
      * @memberof BaseSocket
      */
-    abstract get bufferedAmount(): number;
+    get bufferedAmount(): number {
+        let size = 0;
+
+        for (let item of this._queue.values()) {
+            size += item.data.length;
+        }
+
+        return size;
+    }
 
     /**
-     * @param {*} socket 子类实例化的socket对象
+     * @param {(WebSocket|WS)} socket 子类实例化的socket对象
      * @param {("browser" | "node")} platform 指示该接口所处的平台
      * @param {BaseSocketConfig} configs 配置
      * @memberof BaseSocket
      */
-    constructor(socket: any, platform: "browser" | "node", configs: BaseSocketConfig) {
+    constructor(socket: WebSocket | WS, platform: "browser" | "node", configs: BaseSocketConfig) {
         super();
 
-        const {
-            url,
-            sendingRetry = 3,
-            sendingTimeout = 1000 * 20,
-            needDeserialize = true
-        } = configs;
-
-        this.url = url;
-        this._sendingRetry = sendingRetry;
-        this._sendingTimeout = sendingTimeout;
-        this._needDeserialize = needDeserialize;
+        this.url = configs.url;
+        this._needDeserialize = configs.needDeserialize === undefined ? true : configs.needDeserialize;
         this.socket = socket;
         this.platform = platform;
-
-        this.monitorPing();
     }
 
     /**
@@ -291,43 +261,45 @@ export abstract class BaseSocket extends Emitter {
 
     /**
      * 序列化消息头部。    
-     * 数据格式：头部长度 -> 消息名称长度 -> 消息名称 -> 该消息是否需要确认收到 -> [消息id]
+     * 数据格式：头部长度 -> 是否是内部消息 -> 消息名称长度 -> 消息名称 -> 该消息是否需要确认收到 -> 消息id
      * 
      * @private
+     * @param {boolean} isInternal 是否是内部消息
      * @param {string} messageName 消息的名称
      * @param {boolean} needACK 
-     * @param {number} [messageID]
+     * @param {number} messageID
      * @returns {Buffer} 
      * @memberof BaseSocket
      */
-    private serializeHeader(messageName: string, needACK: boolean, messageID?: number): Buffer {
+    private _serializeHeader(isInternal: boolean, messageName: string, needACK: boolean, messageID: number): Buffer {
         let _headerLength = _Buffer.alloc(8);
+        let _isInternal = _Buffer.alloc(1);
         let _messageNameLength = _Buffer.alloc(8);
         let _messageName = _Buffer.from(messageName);
         let _needACK = _Buffer.alloc(1);
-        let _messageID = needACK ? _Buffer.alloc(8) : _Buffer.alloc(0);
+        let _messageID = _Buffer.alloc(8);
 
+        _isInternal.writeUInt8(isInternal ? 1 : 0, 0);
         _messageNameLength.writeDoubleBE(_messageName.length, 0);
         _needACK.writeUInt8(needACK ? 1 : 0, 0);
+        _messageID.writeDoubleBE(messageID, 0);
 
-        if (needACK)
-            _messageID.writeDoubleBE(<any>messageID, 0);
-
-        let length = _headerLength.length + _messageName.length + _messageNameLength.length + _needACK.length + _messageID.length;
+        let length = _headerLength.length + _isInternal.length + _messageName.length + _messageNameLength.length + _needACK.length + _messageID.length;
         _headerLength.writeDoubleBE(length, 0);
 
-        return Buffer.concat([_headerLength, _messageNameLength, _messageName, _needACK, _messageID], length);
+        return Buffer.concat([_headerLength, _isInternal, _messageNameLength, _messageName, _needACK, _messageID], length);
     }
 
     /**
      * 反序列化头部
      * @param data 头部二进制数据
      */
-    private deserializeHeader(data: Buffer) {
+    private _deserializeHeader(data: Buffer) {
         if (!isBuffer(data))
             throw new Error('传入的数据类型不是Buffer');
 
         const header = {
+            isInternal: true,
             messageName: '',
             needACK: false,
             messageID: -1,
@@ -337,111 +309,82 @@ export abstract class BaseSocket extends Emitter {
         header.headerLength = data.readDoubleBE(0);
         let index = 8;
 
+        header.isInternal = data.readUInt8(index++) === 1;
+
         const messageNameLength = data.readDoubleBE(index);
         index += 8;
 
-        header.messageName = data.slice(index, index + messageNameLength).toString();
-        index += messageNameLength;
+        header.messageName = data.slice(index, index += messageNameLength).toString();
 
         header.needACK = data.readUInt8(index++) === 1;
 
-        if (header.needACK)
-            header.messageID = data.readDoubleBE(index);
+        header.messageID = data.readDoubleBE(index);
 
         return header;
-    }
-
-    /**
-     * 启动ping检查连接是否正常
-     * 
-     * @private
-     * @memberof BaseSocket
-     */
-    private monitorPing() {
-        let timer: NodeJS.Timer;
-        let lastTime: number = 0;    //上一次收到ping的时间
-        let failuresNumber = 0;      //连续失败的次数。最多连续3次就断开连接
-
-        const start = () => {  // 开始发送ping
-            timer = setInterval(() => {
-                if (this._receivedPing > lastTime) {
-                    lastTime = this._receivedPing;
-                    failuresNumber = 0;
-                } else if (++failuresNumber > 3) {
-                    this.emit('error', new Error('ping接收端，一分钟内无应答'));
-                    clearInterval(timer);
-                    this.close();
-                    return;
-                }
-
-                this._sendInternal('ping');
-            }, this._pingInterval);
-        };
-
-        if (this.readyState === ReadyState.OPEN) {  //server内部创建的socket一出来就是open状态的，所以不会触发open事件
-            start();
-        } else {
-            this.on('open', start);
-        }
-
-        this.on('close', () => {
-            clearInterval(timer);
-        });
     }
 
     /**
      * 发送数据。发送失败直接抛出异常
      * 
      * @param {string} messageName 消息的名称(标题)
-     * @param {any[]} [data] 要发送的数据。如果只发送messageName，数据可以留空
+     * @param {(any[] | Buffer)} [data] 要发送的数据。如果是传入的是数组，则数据将使用BaseSocket.serialize() 进行序列化。如果传入的是Buffer，则将直接被发送。如果只发送messageName，也可以留空。
      * @param {boolean} [needACK=true] 发出的这条消息是否需要确认对方是否已经收到
-     * @returns {Promise<void>} 
+     * @returns {Promise<number>} messageID
      * @memberof BaseSocket
      */
-    send(messageName: string, data?: any[], needACK: boolean = true): Promise<void> {
-        return new Promise((resolve, reject) => {
-            const body = data ? BaseSocket.serialize(data) : _Buffer.alloc(0);
-            if (needACK) {
-                const messageID = this._messageID++;
-                const header = this.serializeHeader(messageName, needACK, messageID);
-                const data = _Buffer.concat([header, body]);
-
-                this._message.set(messageID, () => {
-                    this._message.delete(messageID);
-                    resolve();
-                });
-
-                (async () => {
-                    try {
-                        for (var index = 0; index < this._sendingRetry; index++) {
-                            if (!this._message.has(messageID)) return;   //判断对方是否已经收到了
-
-                            await this._sendData(data);
-                            await new Promise(res => setTimeout(res, this._sendingTimeout));
-                        }
-                        throw new Error(`发送数据失败。在尝试${this._sendingRetry}次重发之后，接收端依然没有回应收到。`);
-                    } finally {
-                        this._message.delete(messageID);
-                    }
-                })().then(resolve).catch(reject);
-            } else {
-                const header = this.serializeHeader(messageName, needACK);
-                this._sendData(_Buffer.concat([header, body])).then(resolve).catch(reject);
-            }
-        });
+    send(messageName: string, data?: any[] | Buffer, needACK: boolean = true): Promise<number> {
+        return this._send(false, messageName, needACK, data);
     }
 
     /**
-     * 发送内部数据。   
-     * 注意：所有发送的内部消息都是不需要对方验证是否收到的。如果发送时出现错误会自动触发error事件
-     * 
-     * @protected
-     * @param {string} messageName 消息名称
-     * @param {...any[]} data 其余数据
-     * @memberof BaseSocket
-     */
-    protected _sendInternal(messageName: string, ...data: any[]) {
-        return this.send('__bws_internal__', [messageName, ...data], false).catch(err => this.emit('error', err));
+      * 发送内部数据。发送失败直接抛出异常。      
+      * 注意：要在每一个调用的地方做好异常处理
+      */
+    protected async _sendInternal(messageName: string, data?: any[] | Buffer, needACK: boolean = false): Promise<number> {
+        return this._send(true, messageName, needACK, data);
+    }
+
+    private _send(isInternal: boolean, messageName: string, needACK: boolean, data: any[] | Buffer = []): Promise<number> {
+        return new Promise((resolve, reject) => {
+            const msgID = this._messageID++;
+            const header = this._serializeHeader(isInternal, messageName, needACK, msgID);
+            const body = Array.isArray(data) ? BaseSocket.serialize(data) : data;
+            const sendingData = _Buffer.concat([header, body]);
+
+            const control: QueueData = {
+                data: sendingData,
+                messageID: msgID,
+                cancel: (err) => {  //还未发送之前才可以取消
+                    if (this._queue.values().next().value === control)  //位于队列第一个表示正在发送
+                        return false;
+                    else {
+                        this._queue.delete(msgID);
+                        err ? reject(err) : resolve();
+                        return true;
+                    }
+                },
+                send: () => {
+                    if (needACK) {
+                        this._sendData(sendingData).catch(control.ack);
+                    } else {
+                        this._sendData(sendingData).then(<any>control.ack).catch(control.ack);
+                    }
+                },
+                ack: (err) => {
+                    this._queue.delete(msgID);
+                    err ? reject(err) : resolve();
+
+                    if (this._queue.size > 0)   //如果队列中还有，则发送下一条
+                        this._queue.values().next().value.send();
+                }
+            };
+
+            if (this._queue.size === 0) {
+                control.send();
+            } else {
+                this._queue.set(msgID, control);
+            }
+        });
     }
 
     /**
@@ -459,41 +402,27 @@ export abstract class BaseSocket extends Emitter {
      * 解析接收到数据。子类接收到消息后需要触发这个方法
      * 
      * @private
-     * @param {*} data 接收到数据
+     * @param {Buffer} data 接收到数据
      * @memberof BaseSocket
      */
     protected _receiveData(data: Buffer) {
-        const header = this.deserializeHeader(data);
-        // todo ceshi
-        const body = BaseSocket.deserialize(data.slice(header.headerLength));
-        console.log((<any>this).id, header, body);
+        const header = this._deserializeHeader(data);
 
-        if (header.messageName === '__bws_internal__') {    //如果接收到的是内部发来的消息
+        if (header.needACK)
+            this._sendInternal('ack', [header.messageID]).catch(err => this.emit('error', err));
+
+        if (header.isInternal) {    //如果接收到的是内部发来的消息
             const body = BaseSocket.deserialize(data.slice(header.headerLength));
 
-            switch (body[0]) {
+            switch (header.messageName) {
                 case 'ack':
-                    const callback = this._message.get(body[1]);
-                    callback && callback();
-                    break;
-
-                case 'ping':
-                    this._receivedPing = (new Date).getTime();
+                    const callback = this._queue.get(body[0]);
+                    callback && callback.ack();
                     break;
             }
         } else {
             const body = this._needDeserialize ? BaseSocket.deserialize(data.slice(header.headerLength)) : data.slice(header.headerLength);
-
-            if (header.needACK) {
-                if (this._receivedMessageID < header.messageID) {   //确保不会重复接收
-                    this._receivedMessageID = header.messageID;
-                    this.emit('message', header.messageName, body);
-                }
-
-                this._sendInternal('ack', header.messageID);
-            } else {
-                this.emit('message', header.messageName, body);
-            }
+            this.emit('message', header.messageName, body);
         }
     }
 
@@ -510,12 +439,15 @@ export abstract class BaseSocket extends Emitter {
     /**
      * 当收到消息
      */
-    on(event: 'message', cb: (messageName: string, data: any[]) => void): this
+    on(event: 'message', cb: (messageName: string, data: any[] | Buffer) => void): this
     /**
      * 当连接建立
      */
     on(event: 'open', cb: () => void): this
-    on(event: 'close', cb: (err: Error) => void): this
+    /**
+     * 断开连接
+     */
+    on(event: 'close', cb: (code: number, reason: string) => void): this
     on(event: string, listener: Function): this {
         super.on(event, listener);
         return this;
@@ -525,12 +457,12 @@ export abstract class BaseSocket extends Emitter {
     /**
      * 当收到消息
      */
-    once(event: 'message', cb: (messageName: string, data: any[]) => void): this
+    once(event: 'message', cb: (messageName: string, data: any[] | Buffer) => void): this
     /**
      * 当连接建立
      */
     once(event: 'open', cb: () => void): this
-    once(event: 'close', cb: (err: Error) => void): this
+    once(event: 'close', cb: (code: number, reason: string) => void): this
     once(event: string, listener: Function): this {
         super.once(event, listener);
         return this;

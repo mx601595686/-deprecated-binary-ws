@@ -15,7 +15,7 @@ export interface ServerConfig {
     port?: number;
     /**
      * 绑定在一个预先创建好的http服务器上。
-     * 注意：port与server不能同时指定，否则WS会在内部新建一个http server，绑定在port上，而不绑定在指定的server上了
+     * 注意：如果指定了server，那么host与port将无效
      */
     server?: http.Server | https.Server;
     /**
