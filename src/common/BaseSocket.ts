@@ -96,6 +96,12 @@ export abstract class BaseSocket extends Emitter {
         this._needDeserialize = configs.needDeserialize === undefined ? true : configs.needDeserialize;
         this.socket = socket;
         this.platform = platform;
+
+        this.on('close', () => {    //如果断开，终止所有还未发送的消息
+            for (let item of this._queue.values()) {
+                item.cancel(new Error('连接中断'));
+            }
+        });
     }
 
     /**
@@ -414,6 +420,24 @@ export abstract class BaseSocket extends Emitter {
             const body = this._needDeserialize ? BaseSocket.deserialize(data.slice(header.headerLength)) : data.slice(header.headerLength);
             this.emit('message', header.messageName, body);
         }
+    }
+
+    /**
+     * 取消发送。如果某条消息还没有被取消则可以被取消。取消成功返回true，失败false
+     * 
+     * @param {number} messageID 要取消发送消息的messageID
+     * @param {Error} [err] 传递一个error，指示本次发送属于失败
+     * @returns {boolean} 取消成功返回true，失败false
+     * @memberof BaseSocket
+     */
+    cancel(messageID: number, err?: Error): boolean {
+        const control = this._queue.get(messageID);
+
+        if (control) {
+            return control.cancel(err);
+        }
+
+        return false;
     }
 
     /**
