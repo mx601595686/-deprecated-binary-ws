@@ -261,7 +261,6 @@ describe.only('测试Server Socket', function () {
                         expect(data[7]).to.be.eql({ a: 123 });
                         expect(data[8]).to.be.eql([1, 2, 3]);
                         expect(Buffer.from('123').equals(data[9])).to.be.ok();
-                        expect(Buffer.from([1, 2, 3]).equals(data[10])).to.be.ok();
                         break;
 
                     case '3':
@@ -283,7 +282,6 @@ describe.only('测试Server Socket', function () {
                         expect(data[7]).to.be.eql({ a: 456 });
                         expect(data[8]).to.be.eql([4, 5, 6]);
                         expect(Buffer.from('789').equals(data[9])).to.be.ok();
-                        expect(Buffer.from([1, 5, 9]).equals(data[10])).to.be.ok();
                         done();
                         break;
 
@@ -295,25 +293,16 @@ describe.only('测试Server Socket', function () {
 
             expect(await c_socket.send('1')).to.be(0);
             expect(c_socket.bufferedAmount).to.be(0);
-            debugger
-            expect(await c_socket.send('2', [0, 1.1, '2', true, false, null, undefined, { a: 123 }, [1, 2, 3], Buffer.from('123'), Uint8Array.from([1, 2, 3])])).to.be(1);
+
+            expect(await c_socket.send('2', [0, 1.1, '2', true, false, null, undefined, { a: 123 }, [1, 2, 3], Buffer.from('123')])).to.be(1);
             expect(c_socket.bufferedAmount).to.be(0);
 
             expect(await c_socket.send('3', undefined, false)).to.be(2);
             expect(c_socket.bufferedAmount).to.be(0);
 
-            expect(await c_socket.send('4', [1, 2.1, '3', false, true, undefined, null, { a: 456 }, [4, 5, 6], Buffer.from('789'), Uint8Array.from([1, 5, 9])], false)).to.be(3);
+            expect(await c_socket.send('4', [1, 2.1, '3', false, true, undefined, null, { a: 456 }, [4, 5, 6], Buffer.from('789')], false)).to.be(3);
             expect(c_socket.bufferedAmount).to.be(0);
         })();
     });
-
-    it.only('', function () {
-        expect(isArrayBuffer(new ArrayBuffer(5))).to.be.ok();
-        expect(isArrayBuffer(new Uint8Array(5))).to.not.be.ok();
-        expect(isArrayBuffer(Buffer.alloc(0))).to.not.be.ok();
-        expect(isTypedBuffer.strict(new ArrayBuffer(5))).to.not.be.ok();
-        expect(isTypedBuffer.strict(new Uint32Array(5))).to.be.ok();
-        expect(isTypedBuffer.strict(Buffer.alloc(0))).to.not.be.ok();
-    })
 });
 

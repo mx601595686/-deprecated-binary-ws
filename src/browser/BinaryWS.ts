@@ -1,3 +1,10 @@
+const isBuffer = require('is-buffer');
+const isBlob = require('is-blob');
+const isArrayBuffer = require('is-array-buffer');
+const isTypedBuffer = require('is-typedarray');
+
+const blobToBuffer = require('blob-to-buffer');
+const typedToBuffer = require('typedarray-to-buffer');
 const toArrayBuffer = require('to-arraybuffer');
 
 import { BaseSocketConfig } from './../common/BaseSocketConfig';
@@ -36,17 +43,28 @@ export default class BinaryWS extends BaseSocket {
 
         super(socket, 'browser', cf);
     }
+    /**
+     * 浏览器版除了可以直接发送Buffer之外还可以直接发送ArrayBuffer、TypedBuffer、Blob
+     */
+    send(messageName: string, data?: any[] | any, needACK: boolean = true): Promise<number> {
+        if (Array.isArray(data)) {
+            data = data.map(item => {
+                if (isBuffer(item)) {
+                    return item;
+                } else if (isBlob(item)) {
+                    return blobToBuffer(item)
+                } else if (isArrayBuffer(item) || isTypedBuffer(item)) {
+                    return typedToBuffer(item)
+                } else {
+                    return item;
+                }
+            });
+        } else if (isBlob(data)) {
+            data = blobToBuffer(data)
+        } else if (isArrayBuffer(data) || isTypedBuffer(data)) {
+            data = typedToBuffer(data)
+        }
 
-    send(messageName: string, data?: any[], needACK: boolean = true): Promise<number> {
-        // 检查将要序列化的元素中是否包含ArrayBuffer或Blob
-        data = data ? data.map(item => {
-            if (item instanceof Blob) {
-                return blobToBuffer(item);
-            }else if (item instanceof ArrayBuffer || item instanceof Uint8Array){
-                return typedToBuffer(item)
-            }
-            return item;
-        }) : undefined;
         return super.send(messageName, data, needACK);
     }
 

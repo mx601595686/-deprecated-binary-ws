@@ -2,11 +2,6 @@ import * as Emitter from 'component-emitter';
 import * as WS from 'ws';
 const _Buffer: typeof Buffer = Buffer ? Buffer : require('buffer/').Buffer;  // 确保浏览器下也能使用Buffer
 const isBuffer = require('is-buffer');
-const isBlob = require('is-blob');
-const isArrayBuffer = require('is-array-buffer');
-const isTypedBuffer = require('is-typedarray');
-const blobToBuffer = require('blob-to-buffer');
-const typedToBuffer = require('typedarray-to-buffer');
 
 import { ReadyState } from "./ReadyState";
 import { BaseSocketConfig } from './BaseSocketConfig';
