@@ -16,6 +16,8 @@
     <input type="file" name="" id="file">
     <button id="send">再次发送</button>
 
+    <br>
+    <button id="text">send text</button>
     <script>
         function log(text) {
             const e = document.createElement('p');
@@ -23,18 +25,28 @@
             document.getElementById('chat').appendChild(e)
         }
 
-        const ws = new WebSocket('ws://localhost:8080');
+        const ws = new WebSocket('ws://192.168.232.154:8080');
         ws.binaryType = "arraybuffer"
         ws.onopen = function () {
             log('连接上了服务器');
 
             document.getElementById('file').onchange = function (e) {
-                ws.send(this.files[0]);
+                ws.send(this.files[0], function () {
+                    console.log(1);
+                });
             }
 
             document.getElementById('send').onclick = function () {
                 document.getElementById('file').onchange();
             }
+
+            document.getElementById('text').onclick = function () {
+                ws.send('123123')
+            }
+
+            setInterval(() => {
+                console.log(ws.bufferedAmount);
+            }, 1000);
         }
 
         ws.onmessage = function (e) {

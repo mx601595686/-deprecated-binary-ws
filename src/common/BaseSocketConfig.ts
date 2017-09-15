@@ -15,7 +15,7 @@ export interface BaseSocketConfig {
     url: string,
 
     /**
-     * 发送数据超时。默认1分钟。这个只针对needACK的消息才有效
+     * 发送数据超时。默认20秒（重试3次相当于1分钟）。这个只针对needACK的消息才有效
      * 
      * @type {number}
      * @memberof BaseSocketConfig

@@ -57,8 +57,15 @@ export default class BinaryWS extends BaseSocket {
         return super.send(messageName, data, needACK);
     }
 
-    protected async _sendData(data: Buffer): Promise<void> {
-        this.socket.send(toArrayBuffer(data));
+    protected _sendData(data: Buffer): Promise<void> {
+        return new Promise((resolve, reject) => {
+            this.socket.send(toArrayBuffer(data));
+            const timer = setInterval(() => {
+                if (this.bufferedAmount === 0) {
+                    resolve();
+                }
+            }, 100);
+        });
     }
 
     close() {

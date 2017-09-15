@@ -68,7 +68,7 @@ export abstract class BaseSocket extends Emitter {
 
     /**
      * WebSocket server 的URL地址   
-     * 注意：如果是Server生成的Socket，则url为空
+     * 注意：如果是Server生成的Socket，则url为空字符串
      * 
      * @type {string}
      * @memberof BaseSocket
@@ -115,7 +115,7 @@ export abstract class BaseSocket extends Emitter {
         const {
             url,
             sendingRetry = 3,
-            sendingTimeout = 1000 * 60,
+            sendingTimeout = 1000 * 20,
             needDeserialize = true
         } = configs;
 
@@ -248,9 +248,8 @@ export abstract class BaseSocket extends Emitter {
                     const length = data.readDoubleBE(previous);
                     previous += 8;
 
-                    const content = data.slice(previous, length);
+                    const content = data.slice(previous, previous += length);
                     result.push(content.toString());
-                    previous += length;
                     break;
                 }
                 case DataType.boolean: {
@@ -270,17 +269,15 @@ export abstract class BaseSocket extends Emitter {
                     const length = data.readDoubleBE(previous);
                     previous += 8;
 
-                    result.push(data.slice(previous, length));
-                    previous += length;
+                    result.push(data.slice(previous, previous += length));
                     break;
                 }
                 case DataType.Object: {
                     const length = data.readDoubleBE(previous);
                     previous += 8;
 
-                    const content = data.slice(previous, length);
+                    const content = data.slice(previous, previous += length);
                     result.push(JSON.parse(content.toString()));
-                    previous += length;
                     break;
                 }
                 default: {
@@ -312,7 +309,9 @@ export abstract class BaseSocket extends Emitter {
 
         _messageNameLength.writeDoubleBE(_messageName.length, 0);
         _needACK.writeUInt8(needACK ? 1 : 0, 0);
-        needACK && _messageID.writeDoubleBE(<any>messageID, 0);
+
+        if (needACK)
+            _messageID.writeDoubleBE(<any>messageID, 0);
 
         let length = _headerLength.length + _messageName.length + _messageNameLength.length + _needACK.length + _messageID.length;
         _headerLength.writeDoubleBE(length, 0);
@@ -345,7 +344,9 @@ export abstract class BaseSocket extends Emitter {
         index += messageNameLength;
 
         header.needACK = data.readUInt8(index++) === 1;
-        header.messageID = data.readDoubleBE(index);
+
+        if (header.needACK)
+            header.messageID = data.readDoubleBE(index);
 
         return header;
     }
@@ -361,20 +362,27 @@ export abstract class BaseSocket extends Emitter {
         let lastTime: number = 0;    //上一次收到ping的时间
         let failuresNumber = 0;      //连续失败的次数。最多连续3次就断开连接
 
-        this.on('open', () => {
+        const start = () => {  // 开始发送ping
             timer = setInterval(() => {
                 if (this._receivedPing > lastTime) {
                     lastTime = this._receivedPing;
                     failuresNumber = 0;
-                } else if (failuresNumber++ > 3) {
+                } else if (++failuresNumber > 3) {
                     this.emit('error', new Error('ping接收端，一分钟内无应答'));
                     clearInterval(timer);
                     this.close();
+                    return;
                 }
 
                 this._sendInternal('ping');
             }, this._pingInterval);
-        });
+        };
+
+        if (this.readyState === ReadyState.OPEN) {  //server内部创建的socket一出来就是open状态的，所以不会触发open事件
+            start();
+        } else {
+            this.on('open', start);
+        }
 
         this.on('close', () => {
             clearInterval(timer);
@@ -456,6 +464,10 @@ export abstract class BaseSocket extends Emitter {
      */
     protected _receiveData(data: Buffer) {
         const header = this.deserializeHeader(data);
+        // todo ceshi
+        const body = BaseSocket.deserialize(data.slice(header.headerLength));
+        console.log((<any>this).id, header, body);
+
         if (header.messageName === '__bws_internal__') {    //如果接收到的是内部发来的消息
             const body = BaseSocket.deserialize(data.slice(header.headerLength));
 

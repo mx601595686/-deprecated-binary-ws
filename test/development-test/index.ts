@@ -15,15 +15,16 @@ ws.on('connection', (client) => {
     console.log('有客户连接')
     client.on('message', (data) => {
         console.log(data.toString());
+        client.send(data.toString());
     });
-    let index = 0;
-    const t = setInterval(function () {
-        try {
-            client.send(Buffer.from([index++]));
-        } catch (error) {
-            clearInterval(t);
-        }
-    }, 1000);
+    /*     let index = 0;
+        const t = setInterval(function () {
+            try {
+                client.send(Buffer.from([index++]));
+            } catch (error) {
+                clearInterval(t);
+            }
+        }, 1000); */
 })
 
-server.listen(8080)
+server.listen(8080,"192.168.232.154")
