@@ -1,4 +1,3 @@
-const blobToBuffer = require('blob-to-buffer');
 const toArrayBuffer = require('to-arraybuffer');
 
 import { BaseSocketConfig } from './../common/BaseSocketConfig';
@@ -39,10 +38,12 @@ export default class BinaryWS extends BaseSocket {
     }
 
     send(messageName: string, data?: any[], needACK: boolean = true): Promise<number> {
-        // 检查将要序列化的元素中是否包含Blob
+        // 检查将要序列化的元素中是否包含ArrayBuffer或Blob
         data = data ? data.map(item => {
             if (item instanceof Blob) {
                 return blobToBuffer(item);
+            }else if (item instanceof ArrayBuffer || item instanceof Uint8Array){
+                return typedToBuffer(item)
             }
             return item;
         }) : undefined;

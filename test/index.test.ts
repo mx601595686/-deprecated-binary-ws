@@ -216,15 +216,17 @@ describe.only('测试Server Socket', function () {
     });
 
     afterEach(function (done) {
-        s_socket.on('close', (err) => {
+        s_socket.on('close', () => {
             (<any>s_socket) = undefined;
             (<any>c_socket) = undefined;
-            done(err);
+            done();
         });
         c_socket.close();
     });
 
     it('检查socket的属性是否正确', function () {
+        expect(s_socket.bufferedAmount).to.be(0);
+        expect(c_socket.bufferedAmount).to.be(0);
         expect(s_socket.readyState).to.be(BWS.ReadyState.OPEN);
         expect(c_socket.readyState).to.be(BWS.ReadyState.OPEN);
         expect(s_socket.url).to.be('');
@@ -233,24 +235,55 @@ describe.only('测试Server Socket', function () {
         expect(c_socket.platform).to.be('node');
     });
 
-    it('测试发送消息', function (done) {
+    it('测试顺序收发消息', function (done) {
         (async () => {
+            let index = 0;  //接收的顺序
+
             s_socket.on('message', (name, data) => {
+                index++;
                 switch (name) {
                     case '1':
+                        expect(index).to.be(1);
+
                         expect(data).to.be.empty();
                         break;
 
                     case '2':
-                        expect(data).to.eql([0, 1.1, '2', true, false, null, undefined, { a: 123 }, [1, 2, 3], Buffer.from('123')]);
+                        expect(index).to.be(2);
+
+                        expect(data[0]).to.be(0);
+                        expect(data[1]).to.be(1.1);
+                        expect(data[2]).to.be('2');
+                        expect(data[3]).to.be(true);
+                        expect(data[4]).to.be(false);
+                        expect(data[5]).to.be(null);
+                        expect(data[6]).to.be(undefined);
+                        expect(data[7]).to.be.eql({ a: 123 });
+                        expect(data[8]).to.be.eql([1, 2, 3]);
+                        expect(Buffer.from('123').equals(data[9])).to.be.ok();
+                        expect(Buffer.from([1, 2, 3]).equals(data[10])).to.be.ok();
                         break;
 
                     case '3':
+                        expect(index).to.be(3);
+
                         expect(data).to.be.empty();
                         break;
 
                     case '4':
-                        expect(data).to.eql([0, 1.1, '2', true, false, null, undefined, { a: 123 }, [1, 2, 3], Buffer.from('123')]);
+                        expect(index).to.be(4);
+
+                        expect(data[0]).to.be(1);
+                        expect(data[1]).to.be(2.1);
+                        expect(data[2]).to.be('3');
+                        expect(data[3]).to.be(false);
+                        expect(data[4]).to.be(true);
+                        expect(data[5]).to.be(undefined);
+                        expect(data[6]).to.be(null);
+                        expect(data[7]).to.be.eql({ a: 456 });
+                        expect(data[8]).to.be.eql([4, 5, 6]);
+                        expect(Buffer.from('789').equals(data[9])).to.be.ok();
+                        expect(Buffer.from([1, 5, 9]).equals(data[10])).to.be.ok();
                         done();
                         break;
 
@@ -260,49 +293,27 @@ describe.only('测试Server Socket', function () {
                 }
             });
 
-            await c_socket.send('1');
-            await c_socket.send('2', [0, 1.1, '2', true, false, null, undefined, { a: 123 }, [1, 2, 3], Buffer.from('123')]);
-            await c_socket.send('3', undefined, false);
-            await c_socket.send('4', [0, 1.1, '2', true, false, null, undefined, { a: 123 }, [1, 2, 3], Buffer.from('123')], false);
+            expect(await c_socket.send('1')).to.be(0);
+            expect(c_socket.bufferedAmount).to.be(0);
+            debugger
+            expect(await c_socket.send('2', [0, 1.1, '2', true, false, null, undefined, { a: 123 }, [1, 2, 3], Buffer.from('123'), Uint8Array.from([1, 2, 3])])).to.be(1);
+            expect(c_socket.bufferedAmount).to.be(0);
+
+            expect(await c_socket.send('3', undefined, false)).to.be(2);
+            expect(c_socket.bufferedAmount).to.be(0);
+
+            expect(await c_socket.send('4', [1, 2.1, '3', false, true, undefined, null, { a: 456 }, [4, 5, 6], Buffer.from('789'), Uint8Array.from([1, 5, 9])], false)).to.be(3);
+            expect(c_socket.bufferedAmount).to.be(0);
         })();
     });
 
-    it('测试接收消息', function (done) {
-        (async () => {
-            c_socket.on('message', (name, data) => {
-                switch (name) {
-                    case '1':
-                        expect(data).to.be.empty();
-                        break;
-
-                    case '2':
-                        expect(data).to.eql([0, 1.1, '2', true, false, null, undefined, { a: 123 }, [1, 2, 3], Buffer.from('123')]);
-                        break;
-
-                    case '3':
-                        expect(data).to.be.empty();
-                        break;
-
-                    case '4':
-                        expect(data).to.eql([0, 1.1, '2', true, false, null, undefined, { a: 123 }, [1, 2, 3], Buffer.from('123')]);
-                        done();
-                        break;
-
-                    default:
-                        done(new Error('接收到的消息名称有问题：' + name));
-                        break;
-                }
-            });
-
-            await s_socket.send('1');
-            await s_socket.send('2', [0, 1.1, '2', true, false, null, undefined, { a: 123 }, [1, 2, 3], Buffer.from('123')]);
-            await s_socket.send('3', undefined, false);
-            await s_socket.send('4', [0, 1.1, '2', true, false, null, undefined, { a: 123 }, [1, 2, 3], Buffer.from('123')], false);
-        })();
-    });
-
-    it.skip('', function (done) {
-        this.timeout(1000000)
+    it.only('', function () {
+        expect(isArrayBuffer(new ArrayBuffer(5))).to.be.ok();
+        expect(isArrayBuffer(new Uint8Array(5))).to.not.be.ok();
+        expect(isArrayBuffer(Buffer.alloc(0))).to.not.be.ok();
+        expect(isTypedBuffer.strict(new ArrayBuffer(5))).to.not.be.ok();
+        expect(isTypedBuffer.strict(new Uint32Array(5))).to.be.ok();
+        expect(isTypedBuffer.strict(Buffer.alloc(0))).to.not.be.ok();
     })
 });
 

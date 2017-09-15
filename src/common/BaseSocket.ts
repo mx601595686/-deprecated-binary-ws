@@ -1,7 +1,11 @@
 import * as Emitter from 'component-emitter';
 import * as WS from 'ws';
-const isBuffer = require('is-buffer');
 const _Buffer: typeof Buffer = Buffer ? Buffer : require('buffer/').Buffer;  // 确保浏览器下也能使用Buffer
+const isBuffer = require('is-buffer');
+const isBlob = require('is-blob');
+const isArrayBuffer = require('is-array-buffer');
+const isTypedBuffer = require('is-typedarray');
+const blobToBuffer = require('blob-to-buffer');
 const typedToBuffer = require('typedarray-to-buffer');
 
 import { ReadyState } from "./ReadyState";
@@ -155,16 +159,6 @@ export abstract class BaseSocket extends Emitter {
                         type.writeUInt8(DataType.null, 0);
 
                         bufferItems.push(type);
-                    } else if (item instanceof ArrayBuffer && !isBuffer(item)) {
-                        //针对ArrayBuffer的情况
-                        const type = _Buffer.alloc(1);
-                        const content = typedToBuffer(item);
-                        const contentLength = _Buffer.alloc(8);
-
-                        type.writeUInt8(DataType.Buffer, 0);
-                        contentLength.writeDoubleBE(content.length, 0);
-
-                        bufferItems.push(type, contentLength, content);
                     } else if (isBuffer(item)) {
                         const type = _Buffer.alloc(1);
                         const content = item;
@@ -359,7 +353,7 @@ export abstract class BaseSocket extends Emitter {
                         return false;
                     else {
                         this._queue.delete(msgID);
-                        err ? reject(err) : resolve();
+                        err ? reject(err) : resolve(msgID);
                         return true;
                     }
                 },
@@ -372,17 +366,17 @@ export abstract class BaseSocket extends Emitter {
                 },
                 ack: (err) => {
                     this._queue.delete(msgID);
-                    err ? reject(err) : resolve();
+                    err ? reject(err) : resolve(msgID);
 
                     if (this._queue.size > 0)   //如果队列中还有，则发送下一条
                         this._queue.values().next().value.send();
                 }
             };
 
-            if (this._queue.size === 0) {
+            this._queue.set(msgID, control);    //添加到队列中
+
+            if (this._queue.size === 1) {   //如果只有刚刚设置的这一条
                 control.send();
-            } else {
-                this._queue.set(msgID, control);
             }
         });
     }
@@ -407,6 +401,7 @@ export abstract class BaseSocket extends Emitter {
      */
     protected _receiveData(data: Buffer) {
         const header = this._deserializeHeader(data);
+        console.log(header);
 
         if (header.needACK)
             this._sendInternal('ack', [header.messageID]).catch(err => this.emit('error', err));
