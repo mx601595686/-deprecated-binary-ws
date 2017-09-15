@@ -9,15 +9,19 @@
 </head>
 
 <body>
-    <div id="chat" style="margin: 5px; border: solid 1px red">
-
-    </div>
-
+    <button id="reconnect">重新连接</button>
+    <br>
     <input type="file" name="" id="file">
     <button id="send">再次发送</button>
-
     <br>
-    <button id="text">send text</button>
+
+    <button id="text">send text</button> <span></span>
+    <br>
+
+    <button id="clear">清空</button>
+    <br>
+
+    <div id="chat" style="margin: 5px; border: solid 1px red"></div>
     <script>
         function log(text) {
             const e = document.createElement('p');
@@ -25,40 +29,54 @@
             document.getElementById('chat').appendChild(e)
         }
 
-        const ws = new WebSocket('ws://192.168.232.154:8080');
-        ws.binaryType = "arraybuffer"
-        ws.onopen = function () {
-            log('连接上了服务器');
+        let ws;
+        let timer;
 
-            document.getElementById('file').onchange = function (e) {
-                ws.send(this.files[0], function () {
-                    console.log(1);
-                });
+        document.getElementById('reconnect').onclick = function () {
+            clearInterval(timer);
+            ws && ws.close();
+            ws = new WebSocket('ws://192.168.232.154:8080');
+            ws.binaryType = "arraybuffer"
+
+            ws.onopen = function () {
+                log('连接上了服务器');
+
+                document.getElementById('file').onchange = function (e) {
+                    ws.send(this.files[0]);
+                }
+
+                document.getElementById('send').onclick = function () {
+                    document.getElementById('file').onchange();
+                }
+                let index = 0;
+                document.getElementById('text').onclick = function () {
+                    var enc = new TextEncoder("utf-8");
+                    ws.send(enc.encode((++index).toString()));
+                    this.nextElementSibling.innerHTML = index;
+                }
+
+                document.getElementById('clear').onclick = function () {
+                    document.getElementById('chat').innerHTML = '';
+                }
+
+                timer = setInterval(() => {
+                    console.log(ws.bufferedAmount);
+                }, 1000);
             }
 
-            document.getElementById('send').onclick = function () {
-                document.getElementById('file').onchange();
+            ws.onmessage = function (e) {
+                log(`server:${e.data.toString()}`);
             }
 
-            document.getElementById('text').onclick = function () {
-                ws.send('123123')
+            ws.onclose = function (e) {
+                log('连接断开：' + e)
             }
-
-            setInterval(() => {
-                console.log(ws.bufferedAmount);
-            }, 1000);
+            ws.onerror = function (e) {
+                log('连接错误：' + e)
+            }
         }
 
-        ws.onmessage = function (e) {
-            log(`server:${e.data.toString()}`);
-        }
-
-        ws.onclose = function (e) {
-            log('连接断开：' + e)
-        }
-        ws.onerror = function (e) {
-            log('连接错误：' + e)
-        }
+        document.getElementById('reconnect').onclick();
     </script>
 </body>
 

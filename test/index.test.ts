@@ -3,7 +3,7 @@ import expect = require('expect.js');
 import * as BWS from '../';
 import * as http from 'http';
 
-//测试时会用到8080和8888端口，请确保这些端口不会被占用
+//测试时会用到8000,8080,8880和8888端口，请确保这些端口不会被占用
 
 describe('测试Server', function () {
 
@@ -32,13 +32,13 @@ describe('测试Server', function () {
             let server: BWS.Server;
 
             it('测试listening事件', function (done) {
-                server = new BWS.Server(8888);
+                server = new BWS.Server(8000);
                 server.on('listening', done);
             });
 
             it('测试连接服务器', function (done) {
                 server.on('connection', () => done());
-                const socket = new BWS.Socket('ws://localhost:8888');
+                const socket = new BWS.Socket('ws://localhost:8000');
             });
 
             it('测试close事件', function (done) {
@@ -51,13 +51,13 @@ describe('测试Server', function () {
             let server: BWS.Server;
 
             it('测试listening事件', function (done) {
-                server = new BWS.Server('localhost', 8888);
+                server = new BWS.Server('localhost', 8880);
                 server.on('listening', done);
             });
 
             it('测试连接服务器', function (done) {
                 server.on('connection', () => done());
-                const socket = new BWS.Socket('ws://localhost:8888');
+                const socket = new BWS.Socket('ws://localhost:8880');
             });
 
             it('测试close事件', function (done) {
@@ -83,6 +83,31 @@ describe('测试Server', function () {
             it('测试连接服务器', function (done) {
                 server.on('connection', () => done());
                 const socket = new BWS.Socket('ws://localhost:8888');
+            });
+
+            it('测试close事件', function (done) {
+                server.on('close', done);
+                server.close();
+            });
+        });
+
+        describe('通过配置创建', function () {
+            let server: BWS.Server;
+
+            it('测试listening事件', function (done) {
+                const hs = http.createServer((req, res) => {
+                    res.end('hello');
+                });
+
+                hs.listen(8880);
+
+                server = new BWS.Server({ port: 8080, host: 'localhost', server: hs });
+                server.on('listening', done);
+            });
+
+            it('测试连接服务器', function (done) {
+                server.on('connection', () => done());
+                const socket = new BWS.Socket('ws://localhost:8880');
             });
 
             it('测试close事件', function (done) {
@@ -164,7 +189,7 @@ describe('测试Server', function () {
     });
 });
 
-describe('测试Server Socket', function () {
+describe.only('测试Server Socket', function () {
     let server: BWS.Server;
 
     let s_socket: BWS.Socket;    //服务器端对应的接口

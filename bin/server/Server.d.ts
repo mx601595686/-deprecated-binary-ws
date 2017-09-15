@@ -1,19 +1,19 @@
-/// <reference types="node" />
 /// <reference types="ws" />
+/// <reference types="node" />
 import * as WS from 'ws';
-import * as events from 'events';
+import * as Emitter from 'component-emitter';
 import * as http from 'http';
 import * as https from 'https';
 import { ServerConfig } from './ServerConfig';
 import { Socket } from './Socket';
-export declare class Server extends events.EventEmitter {
+export declare class Server extends Emitter {
     /**
      * 被包装的websocket对象
      *
      * @type {WS.Server}
      * @memberof Server
      */
-    readonly _ws: WS.Server;
+    readonly ws: WS.Server;
     /**
      * 保存所有客户端连接。key是socket.id
      */
@@ -25,7 +25,7 @@ export declare class Server extends events.EventEmitter {
     constructor();
     /**
      * 创建websocket服务器。
-     * @param {string} host 监听的地址
+     * @param {string} host 监听的主机地址
      * @memberof Server
      */
     constructor(host: string);
@@ -37,14 +37,14 @@ export declare class Server extends events.EventEmitter {
     constructor(port: number);
     /**
      * 创建websocket服务器。
-     * @param {string} host 监听的地址
+     * @param {string} host 监听的主机地址
      * @param {number} port 监听的端口
      * @memberof Server
      */
     constructor(host: string, port: number);
     /**
      * 创建websocket服务器。
-     * @param {(http.Server | https.Server)} server 绑定到这个http服务器之上
+     * @param {(http.Server | https.Server)} server 绑定到指定的http服务器之上
      * @memberof Server
      */
     constructor(server: http.Server | https.Server);
@@ -91,16 +91,6 @@ export declare class Server extends events.EventEmitter {
      */
     on(event: 'connection', cb: (socket: Socket) => void): this;
     on(event: 'close', cb: (err: Error) => void): this;
-    addListener(event: 'error', cb: (err: Error) => void): this;
-    /**
-     * 当服务器开始监听
-     */
-    addListener(event: 'listening', cb: () => void): this;
-    /**
-     * 当有新的客户端与服务器建立起连接
-     */
-    addListener(event: 'connection', cb: (socket: Socket) => void): this;
-    addListener(event: 'close', cb: (err: Error) => void): this;
     once(event: 'error', cb: (err: Error) => void): this;
     /**
      * 当服务器开始监听

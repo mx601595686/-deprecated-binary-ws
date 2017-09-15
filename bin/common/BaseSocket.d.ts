@@ -53,7 +53,7 @@ export declare abstract class BaseSocket extends Emitter {
     readonly socket: any;
     /**
      * WebSocket server 的URL地址
-     * 注意：如果是Server生成的Socket，则url为空
+     * 注意：如果是Server生成的Socket，则url为空字符串
      *
      * @type {string}
      * @memberof BaseSocket

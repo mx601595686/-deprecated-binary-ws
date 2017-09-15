@@ -1,11 +1,11 @@
 import * as WS from 'ws';
-import * as events from 'events';
+import * as Emitter from 'component-emitter';
 import * as http from 'http';
 import * as https from 'https';
 import { ServerConfig } from './ServerConfig';
 import { Socket } from './Socket';
 
-export class Server extends events.EventEmitter {
+export class Server extends Emitter {
 
     /**
      * 被包装的websocket对象
@@ -13,7 +13,7 @@ export class Server extends events.EventEmitter {
      * @type {WS.Server}
      * @memberof Server
      */
-    readonly _ws: WS.Server;
+    readonly ws: WS.Server;
 
     /**
      * 保存所有客户端连接。key是socket.id
@@ -27,7 +27,7 @@ export class Server extends events.EventEmitter {
     constructor()
     /**
      * 创建websocket服务器。
-     * @param {string} host 监听的地址
+     * @param {string} host 监听的主机地址
      * @memberof Server
      */
     constructor(host: string)
@@ -39,14 +39,14 @@ export class Server extends events.EventEmitter {
     constructor(port: number)
     /**
      * 创建websocket服务器。
-     * @param {string} host 监听的地址
+     * @param {string} host 监听的主机地址
      * @param {number} port 监听的端口
      * @memberof Server
      */
     constructor(host: string, port: number)
     /**
      * 创建websocket服务器。
-     * @param {(http.Server | https.Server)} server 绑定到这个http服务器之上
+     * @param {(http.Server | https.Server)} server 绑定到指定的http服务器之上
      * @memberof Server
      */
     constructor(server: http.Server | https.Server)
@@ -75,8 +75,6 @@ export class Server extends events.EventEmitter {
 
         if (args[0] instanceof (<any>http).Server || args[0] instanceof (<any>https).Server) {
             config.server = args[0];
-            config.host = undefined;    //必须清除，否则WS内部会另外创建一个http server
-            config.port = undefined;
         } else if (typeof args[0] === 'number') {
             config.port = args[0];
         } else if (typeof args[0] === 'string') {
@@ -87,10 +85,16 @@ export class Server extends events.EventEmitter {
             Object.assign(config, args[0]);
         }
 
-        this._ws = new WS.Server(config);
-        this._ws.on('error', this.emit.bind(this, 'error'));
-        this._ws.on('listening', this.emit.bind(this, 'listening'));
-        this._ws.on('connection', (client) => {
+        if (config.server) {
+            config.host = undefined;    //必须清除，否则WS内部会另外创建一个http server
+            config.port = undefined;
+        }
+
+        this.ws = new WS.Server(config);
+        this.ws.on('error', this.emit.bind(this, 'error'));
+        this.ws.once('listening', this.emit.bind(this, 'listening'));
+        (<any>this.ws)._server.once('close', this.emit.bind(this, 'close'));  //ws内部会把创建或绑定的http server 保存到_server中
+        this.ws.on('connection', (client) => {
             const socket = new Socket(client);
             this.clients.set(socket.id, socket);
             this.emit('connection', socket);
@@ -127,9 +131,9 @@ export class Server extends events.EventEmitter {
      * @memberof Server
      */
     close() {
-        this._ws.close(err => {
-            this.emit('close', err);
-        });
+        const server = (<any>this.ws)._server;
+        this.ws.close();
+        server.close();     //ws不会吧绑定的server关掉，所以这里再次关闭一下
     }
 
     on(event: 'error', cb: (err: Error) => void): this
@@ -144,21 +148,6 @@ export class Server extends events.EventEmitter {
     on(event: 'close', cb: (err: Error) => void): this
     on(event: string, listener: Function): this {
         super.on(event, listener);
-        return this;
-    }
-
-    addListener(event: 'error', cb: (err: Error) => void): this
-    /**
-     * 当服务器开始监听
-     */
-    addListener(event: 'listening', cb: () => void): this
-    /**
-     * 当有新的客户端与服务器建立起连接
-     */
-    addListener(event: 'connection', cb: (socket: Socket) => void): this
-    addListener(event: 'close', cb: (err: Error) => void): this
-    addListener(event: string, listener: Function): this {
-        super.addListener(event, listener);
         return this;
     }
 

@@ -26,5 +26,11 @@ ws.on('connection', (client) => {
             }
         }, 1000); */
 })
-
-server.listen(8080,"192.168.232.154")
+server.on('close',function () {
+    console.log(1);
+})
+server.close();
+server.listen(8080,"192.168.232.154");
+server.close();
+server.close();
+server.close();

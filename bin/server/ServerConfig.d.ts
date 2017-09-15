@@ -6,7 +6,7 @@ import * as https from 'https';
  */
 export interface ServerConfig {
     /**
-     * 要绑定的服务地址。默认0.0.0.0
+     * 要绑定的主机地址。默认0.0.0.0
      */
     host?: string;
     /**
