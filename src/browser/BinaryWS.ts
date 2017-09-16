@@ -34,14 +34,16 @@ export default class BinaryWS extends BaseSocket {
             Object.assign(cf, args);
         }
 
-        const socket = new WebSocket(cf.url);
-        socket.binaryType = 'arraybuffer';
-        socket.onopen = () => this.emit('open');
-        socket.onclose = (ev) => this.emit('close', ev.code, ev.reason);
-        socket.onerror = (err) => { console.error(err), this.emit('error', new Error('连接错误')); }
-        socket.onmessage = (e) => this._receiveData(e.data);
+        if (!(cf.socket instanceof WebSocket))
+            cf.socket = new WebSocket(cf.url);
 
-        super(socket, 'browser', cf);
+        (<WebSocket>(cf.socket)).binaryType = 'arraybuffer';
+        (<WebSocket>(cf.socket)).onopen = () => this.emit('open');
+        (<WebSocket>(cf.socket)).onclose = (ev) => this.emit('close', ev.code, ev.reason);
+        (<WebSocket>(cf.socket)).onerror = (err) => { console.error(err), this.emit('error', new Error('连接错误')); }
+        (<WebSocket>(cf.socket)).onmessage = (e) => this._receiveData(e.data);
+
+        super('browser', cf);
     }
     /**
      * 浏览器版除了可以直接发送Buffer之外还可以直接发送ArrayBuffer、TypedBuffer、Blob

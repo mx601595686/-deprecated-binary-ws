@@ -36,24 +36,21 @@ export class Socket extends BaseSocket {
         const cf: ServerSocketConfig = { url: '' };
         let socket: WS;
 
-        if (args instanceof WS) {   //服务器内部创建的接口
-            socket = args;
-        } else {
-            if (typeof args === 'string') {
-                cf.url = args;
-            } else if (typeof args === 'object') {
-                Object.assign(cf, args);
-            }
-
-            socket = new WS(cf.url, cf);
+        if (typeof args === 'string') {
+            cf.url = args;
+        } else if (typeof args === 'object') {
+            Object.assign(cf, args);
         }
 
-        socket.on('open', () => this.emit('open'));
-        socket.on('close', (code: number, reason: string) => this.emit('close', code, reason));
-        socket.on('error', (err) => this.emit('error', err));
-        socket.on('message', (data: Buffer) => this._receiveData(data));
+        if (!(cf.socket instanceof WS))
+            cf.socket = new WS(cf.url, cf);
 
-        super(socket, 'node', cf);
+        (<WS>(cf.socket)).on('open', () => this.emit('open'));
+        (<WS>(cf.socket)).on('close', (code: number, reason: string) => this.emit('close', code, reason));
+        (<WS>(cf.socket)).on('error', (err) => this.emit('error', err));
+        (<WS>(cf.socket)).on('message', (data: Buffer) => this._receiveData(data));
+
+        super('node', cf);
         this.id = Socket._id_Number++;
     }
 

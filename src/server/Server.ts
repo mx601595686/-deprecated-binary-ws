@@ -62,6 +62,7 @@ export class Server extends Emitter {
         const config: ServerConfig & { verifyClient: WS.VerifyClientCallbackAsync } = {
             host: '0.0.0.0',
             port: 8080,
+            needDeserialize: true,
             verifyClient: (info, cb) => {
                 this.verifyClient(info.req, info.origin, info.secure).then((result => {
                     if (typeof result === 'boolean') {
@@ -95,12 +96,16 @@ export class Server extends Emitter {
         this.ws.once('listening', this.emit.bind(this, 'listening'));
         (<any>this.ws)._server.once('close', this.emit.bind(this, 'close'));  //ws内部会把创建或绑定的http server 保存到_server中
         this.ws.on('connection', (client) => {
-            const socket = new Socket(client);
+            const socket = new Socket({ url: '', socket: client, needDeserialize: config.needDeserialize });
             this.clients.set(socket.id, socket);
             this.emit('connection', socket);
 
-            socket.on('close', () => {
+            socket.once('close', () => {
                 this.clients.delete(socket.id);
+            });
+
+            socket.once('error', () => {    //接口如果出现异常则关闭
+                socket.close();
             });
         });
     }

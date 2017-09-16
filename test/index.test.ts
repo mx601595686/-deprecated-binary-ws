@@ -187,6 +187,10 @@ describe('测试Server', function () {
             socket.close();
         });
     });
+
+    describe('测试关闭server自动断开所有连接',function(){});
+    describe('测试server端socket出现错误，自动断开',function(){});
+    describe('测试不反序列化收到的数据',function(){});
 });
 
 describe.only('测试Server Socket', function () {
@@ -294,13 +298,13 @@ describe.only('测试Server Socket', function () {
             await c_socket.send('1');
             expect(c_socket.bufferedAmount).to.be(0);
 
-            await c_socket.send('2', [0, 1.1, '2', true, false, null, undefined, { a: 123 }, [1, 2, 3], Buffer.from('123')])
+            await c_socket.send('2', [0, 1.1, '2', true, false, null, undefined, { a: 123 }, [1, 2, 3], Buffer.from('123')]);
             expect(c_socket.bufferedAmount).to.be(0);
 
-            await c_socket.send('3', undefined, false)
+            await c_socket.send('3', undefined, false);
             expect(c_socket.bufferedAmount).to.be(0);
 
-            await c_socket.send('4', [1, 2.1, '3', false, true, undefined, null, { a: 456 }, [4, 5, 6], Buffer.from('789')], false)
+            await c_socket.send('4', [1, 2.1, '3', false, true, undefined, null, { a: 456 }, [4, 5, 6], Buffer.from('789')], false);
             expect(c_socket.bufferedAmount).to.be(0);
         })();
     });
@@ -366,7 +370,39 @@ describe.only('测试Server Socket', function () {
             expect(c_socket.send('3', undefined, false).messageID).to.be(2);
             expect(c_socket.bufferedAmount).to.not.be(0);
 
-            await c_socket.send('4', [1, 2.1, '3', false, true, undefined, null, { a: 456 }, [4, 5, 6], Buffer.from('789')], false)
+            await c_socket.send('4', [1, 2.1, '3', false, true, undefined, null, { a: 456 }, [4, 5, 6], Buffer.from('789')], false);
+            expect(c_socket.bufferedAmount).to.be(0);
+        })();
+    });
+
+    it.only('测试直接发送Buffer', function (done) {
+        (async () => {//存在未序列化buffer的情况
+            let index = 0;  //接收的顺序
+
+            s_socket.on('message', (name, data: Buffer) => {
+                index++;
+                switch (name) {
+                    case '1':
+                        expect(index).to.be(1);
+                        expect(Buffer.from('123').equals(data)).to.be.ok();
+                        break;
+
+                    case '2':
+                        expect(index).to.be(2);
+                        expect(Buffer.from('asd').equals(data)).to.be.ok();
+                        done();
+                        break;
+
+                    default:
+                        done(new Error('接收到的消息有问题：' + name));
+                        break;
+                }
+            });
+
+            expect(c_socket.send('1', Buffer.from('123')).messageID).to.be(0);
+            expect(c_socket.bufferedAmount).to.not.be(0);
+
+            await c_socket.send('2', Buffer.from('asd'), false);
             expect(c_socket.bufferedAmount).to.be(0);
         })();
     });
@@ -425,6 +461,16 @@ describe.only('测试Server Socket', function () {
             await c_socket.send('4', [1, 2.1, '3', false, true, undefined, null, { a: 456 }, [4, 5, 6], Buffer.from('789')], false);
             expect(c_socket.bufferedAmount).to.be(0);
         })();
+    });
+
+    it('测试断开连接取消发送', function (done) {
+        s_socket.on('message', (name, data) => {
+            debugger
+            done(new Error('不可能执行到这里，代码逻辑存在错误'));
+        });
+
+
+
     });
 });
 

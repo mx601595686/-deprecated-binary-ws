@@ -30,4 +30,12 @@ export interface ServerConfig {
      * 单条消息的最大大小（byte）。
      */
     maxPayload?: number;
+
+    /**
+     * 是否对收到的消息进行反序列化。默认true。
+     * 
+     * @type {boolean}
+     * @memberof BaseSocketConfig
+     */
+    needDeserialize?: boolean;
 }

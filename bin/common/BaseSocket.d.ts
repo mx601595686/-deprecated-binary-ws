@@ -61,12 +61,11 @@ export declare abstract class BaseSocket extends Emitter {
      */
     readonly bufferedAmount: number;
     /**
-     * @param {(WebSocket|WS)} socket 子类实例化的socket对象
      * @param {("browser" | "node")} platform 指示该接口所处的平台
      * @param {BaseSocketConfig} configs 配置
      * @memberof BaseSocket
      */
-    constructor(socket: WebSocket | WS, platform: "browser" | "node", configs: BaseSocketConfig);
+    constructor(platform: "browser" | "node", configs: BaseSocketConfig);
     /**
      * 对要发送的数据进行序列化。注意只有位于数组根下的boolean、string、number、void、Buffer才会进行二进制序列化，对象会被JSON.stringify
      * 数据格式： 元素类型 -> [元素长度] -> 元素内容
@@ -74,7 +73,9 @@ export declare abstract class BaseSocket extends Emitter {
      * @static
      * @memberof BaseSocket
      */
-    static serialize(data: any[]): Buffer;
+    static serialize(data: any[]): Buffer & {
+        _serialized: boolean;
+    };
     /**
      * 对接收到的消息进行反序列化
      *
@@ -105,7 +106,7 @@ export declare abstract class BaseSocket extends Emitter {
      * 发送数据。发送失败直接抛出异常
      *
      * @param {string} messageName 消息的名称(标题)
-     * @param {(any[] | Buffer)} [data=[]] 要发送的数据。如果是传入的是数组，则数据将使用BaseSocket.serialize() 进行序列化。如果传入的是Buffer，则将直接被发送。
+     * @param {(any[] | Buffer)} [data=[]] 要发送的数据。如果是传入的是数组，则数据将使用BaseSocket.serialize() 进行序列化。如果传入的是Buffer，则将直接被发送。(注意：传入的Buffer必须是BaseSocket.serialize()产生的)
      * @param {boolean} [needACK=true] 发出的这条消息是否需要确认对方是否已经收到
      * @returns {(Promise<void> & { messageID: number })} messageID
      * @memberof BaseSocket

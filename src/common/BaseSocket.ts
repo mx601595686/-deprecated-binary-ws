@@ -84,22 +84,30 @@ export abstract class BaseSocket extends Emitter {
     }
 
     /**
-     * @param {(WebSocket|WS)} socket 子类实例化的socket对象
      * @param {("browser" | "node")} platform 指示该接口所处的平台
      * @param {BaseSocketConfig} configs 配置
      * @memberof BaseSocket
      */
-    constructor(socket: WebSocket | WS, platform: "browser" | "node", configs: BaseSocketConfig) {
+    constructor(platform: "browser" | "node", configs: BaseSocketConfig) {
         super();
 
         this.url = configs.url;
         this._needDeserialize = configs.needDeserialize === undefined ? true : configs.needDeserialize;
-        this.socket = socket;
         this.platform = platform;
+
+        if (configs.socket === undefined) {
+            throw new Error('传入的socket不可以为空');
+        } else {
+            this.socket = configs.socket;
+        }
 
         this.on('close', () => {    //如果断开，终止所有还未发送的消息
             for (let item of this._queue.values()) {
                 item.cancel(new Error('连接中断'));
+            }
+
+            if (this._queue.size > 0) { //取消正在发送的
+                this._queue.values().next().value.ack(new Error('连接中断'));
             }
         });
     }
@@ -111,7 +119,7 @@ export abstract class BaseSocket extends Emitter {
      * @static
      * @memberof BaseSocket
      */
-    static serialize(data: any[]): Buffer {
+    static serialize(data: any[]): Buffer & { _serialized: boolean } {
         const bufferItems: Buffer[] = [];
 
         for (let item of data) {
@@ -183,7 +191,9 @@ export abstract class BaseSocket extends Emitter {
             }
         }
 
-        return _Buffer.concat(bufferItems);
+        const result: any = _Buffer.concat(bufferItems);
+        result._serialized = true;  //标记这份数据是被序列化过了的
+        return result;
     }
 
     /**
@@ -322,7 +332,7 @@ export abstract class BaseSocket extends Emitter {
      * 发送数据。发送失败直接抛出异常
      * 
      * @param {string} messageName 消息的名称(标题)
-     * @param {(any[] | Buffer)} [data=[]] 要发送的数据。如果是传入的是数组，则数据将使用BaseSocket.serialize() 进行序列化。如果传入的是Buffer，则将直接被发送。
+     * @param {(any[] | Buffer)} [data=[]] 要发送的数据。如果是传入的是数组，则数据将使用BaseSocket.serialize() 进行序列化。如果传入的是Buffer，则将直接被发送。(注意：传入的Buffer必须是BaseSocket.serialize()产生的)
      * @param {boolean} [needACK=true] 发出的这条消息是否需要确认对方是否已经收到
      * @returns {(Promise<void> & { messageID: number })} messageID
      * @memberof BaseSocket
@@ -343,8 +353,17 @@ export abstract class BaseSocket extends Emitter {
         const msgID = this._messageID++;
         const prom: any = new Promise((resolve, reject) => {
             const header = this._serializeHeader(isInternal, messageName, needACK, msgID);
-            const body = Array.isArray(data) ? BaseSocket.serialize(data) : data;
-            const sendingData = _Buffer.concat([header, body]);
+            let sendingData: Buffer;
+            if (Array.isArray(data)) {
+                sendingData = _Buffer.concat([header, BaseSocket.serialize(data)]);
+            } else if (isBuffer(data)) {
+                if ((<any>data)._serialized)
+                    sendingData = _Buffer.concat([header, data]);
+                else
+                    throw new Error('要被发送的Buffer并不是BaseSocket.serialize()序列化产生的');
+            } else {
+                throw new Error(`传入的数据类型存在问题，必须是数组或Buffer。实际类型：${Object.prototype.toString.call(data)}`);
+            }
 
             const control: QueueData = {
                 data: sendingData,
@@ -403,23 +422,27 @@ export abstract class BaseSocket extends Emitter {
      * @memberof BaseSocket
      */
     protected _receiveData(data: Buffer) {
-        const header = this._deserializeHeader(data);
+        try {
+            const header = this._deserializeHeader(data);
 
-        if (header.needACK)
-            this._sendInternal('ack', [header.messageID]).catch(err => this.emit('error', err));
+            if (header.needACK)
+                this._sendInternal('ack', [header.messageID]).catch(err => this.emit('error', err));
 
-        if (header.isInternal) {    //如果接收到的是内部发来的消息
-            const body = BaseSocket.deserialize(data.slice(header.headerLength));
+            if (header.isInternal) {    //如果接收到的是内部发来的消息
+                const body = BaseSocket.deserialize(data.slice(header.headerLength));
 
-            switch (header.messageName) {
-                case 'ack':
-                    const callback = this._queue.get(body[0]);
-                    callback && callback.ack();
-                    break;
+                switch (header.messageName) {
+                    case 'ack':
+                        const callback = this._queue.get(body[0]);
+                        callback && callback.ack();
+                        break;
+                }
+            } else {
+                const body = this._needDeserialize ? BaseSocket.deserialize(data.slice(header.headerLength)) : data.slice(header.headerLength);
+                this.emit('message', header.messageName, body);
             }
-        } else {
-            const body = this._needDeserialize ? BaseSocket.deserialize(data.slice(header.headerLength)) : data.slice(header.headerLength);
-            this.emit('message', header.messageName, body);
+        } catch (error) {
+            this.emit('error', error);
         }
     }
 
