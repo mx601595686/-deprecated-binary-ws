@@ -291,21 +291,21 @@ describe.only('测试Server Socket', function () {
                 }
             });
 
-            expect(await c_socket.send('1')).to.be(0);
+            await c_socket.send('1');
             expect(c_socket.bufferedAmount).to.be(0);
 
-            expect(await c_socket.send('2', [0, 1.1, '2', true, false, null, undefined, { a: 123 }, [1, 2, 3], Buffer.from('123')])).to.be(1);
+            await c_socket.send('2', [0, 1.1, '2', true, false, null, undefined, { a: 123 }, [1, 2, 3], Buffer.from('123')])
             expect(c_socket.bufferedAmount).to.be(0);
 
-            expect(await c_socket.send('3', undefined, false)).to.be(2);
+            await c_socket.send('3', undefined, false)
             expect(c_socket.bufferedAmount).to.be(0);
 
-            expect(await c_socket.send('4', [1, 2.1, '3', false, true, undefined, null, { a: 456 }, [4, 5, 6], Buffer.from('789')], false)).to.be(3);
+            await c_socket.send('4', [1, 2.1, '3', false, true, undefined, null, { a: 456 }, [4, 5, 6], Buffer.from('789')], false)
             expect(c_socket.bufferedAmount).to.be(0);
         })();
     });
 
-    it('测试乱序收发消息', function (done) {
+    it.only('测试乱序收发消息', function (done) {
         (async () => {
             let index = 0;  //接收的顺序
 
@@ -361,13 +361,12 @@ describe.only('测试Server Socket', function () {
                 }
             });
 
-            c_socket.send('1');
-            c_socket.send('2', [0, 1.1, '2', true, false, null, undefined, { a: 123 }, [1, 2, 3], Buffer.from('123')]);
-            c_socket.send('3', undefined, false)
-            
+            expect(c_socket.send('1').messageID).to.be(0);
+            expect(c_socket.send('2', [0, 1.1, '2', true, false, null, undefined, { a: 123 }, [1, 2, 3], Buffer.from('123')]).messageID).to.be(1);
+            expect(c_socket.send('3', undefined, false).messageID).to.be(2);
             expect(c_socket.bufferedAmount).to.not.be(0);
 
-            expect(await c_socket.send('4', [1, 2.1, '3', false, true, undefined, null, { a: 456 }, [4, 5, 6], Buffer.from('789')], false)).to.be(3);
+            await c_socket.send('4', [1, 2.1, '3', false, true, undefined, null, { a: 456 }, [4, 5, 6], Buffer.from('789')], false)
             expect(c_socket.bufferedAmount).to.be(0);
         })();
     });
