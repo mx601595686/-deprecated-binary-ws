@@ -154,6 +154,121 @@ describe('测试Server', function () {
     describe('检查server.clients', function () {
 
         let server: BWS.Server;
+        const socket: BWS.Socket[] = [];
+
+        before(function (done) {
+            server = new BWS.Server();
+            server.on('listening', done);
+        });
+
+        after(function (done) {
+            server.on('close', done)
+            server.close();
+        });
+
+        it('新建连接1', function name(done) {
+            let s = new BWS.Socket('ws://localhost:8080');
+            s.on('open', function () {
+                setTimeout(() => {
+                    expect(server.clients.size).to.be(1);
+                    expect(server.clients.values().next().value.platform).be('node');
+                    done();
+                }, 1000);
+            });
+            socket.push(s);
+        });
+
+        it('新建连接2', function name(done) {
+            let s = new BWS.Socket('ws://localhost:8080');
+            s.on('open', function () {
+                setTimeout(() => {
+                    expect(server.clients.size).to.be(2);
+                    expect(server.clients.values().next().value.platform).be('node');
+                    done();
+                }, 1000);
+            });
+            socket.push(s);
+        });
+
+        it('新建连接3', function name(done) {
+            let s = new BWS.Socket('ws://localhost:8080');
+            s.on('open', function () {
+                setTimeout(() => {
+                    expect(server.clients.size).to.be(3);
+                    expect(server.clients.values().next().value.platform).be('node');
+                    done();
+                }, 1000);
+            });
+            socket.push(s);
+        });
+
+        it('断开连接1', function (done) {
+            socket[0].on('close', function () {
+                setTimeout(() => {
+                    expect(server.clients.size).to.be(2);
+                    done();
+                }, 1000);
+            });
+            socket[0].close();
+        });
+
+        it('断开连接2', function (done) {
+            socket[1].on('close', function () {
+                setTimeout(() => {
+                    expect(server.clients.size).to.be(1);
+                    done();
+                }, 1000);
+            });
+            socket[1].close();
+        });
+
+        it('断开连接3', function (done) {
+            socket[2].on('close', function () {
+                setTimeout(() => {
+                    expect(server.clients.size).to.be(0);
+                    done();
+                }, 1000);
+            });
+            socket[2].close();
+        });
+    });
+
+    describe('测试关闭server自动断开所有连接', function () {
+        let server: BWS.Server;
+        let socket: BWS.Socket;
+
+        before(function (done) {
+            server = new BWS.Server();
+            server.on('listening', done);
+        });
+
+        beforeEach(function name(done) {
+            socket = new BWS.Socket('ws://localhost:8080');
+            socket.on('open', function () {
+                setTimeout(() => {
+                    expect(server.clients.size).to.be(1);
+                    expect(server.clients.values().next().value.platform).be('node');
+                    done();
+                }, 1000);
+            });
+        });
+
+        it('关闭server', function (done) {
+            let socketClose = false;
+            socket.on('close', () => socketClose = true);
+            server.on('close', () => {
+                setTimeout(() => {
+                    expect(socketClose).to.be.ok();
+                    expect(server.clients.size).to.be(0);
+                    done();
+                }, 1000);
+            });
+            server.close();
+        });
+    });
+
+    describe('测试server端socket出现错误，自动断开', function () {
+        let server: BWS.Server;
         let socket: BWS.Socket;
 
         before(function (done) {
@@ -166,7 +281,7 @@ describe('测试Server', function () {
             server.close();
         });
 
-        it('新建连接', function name(done) {
+        beforeEach(function name(done) {
             socket = new BWS.Socket('ws://localhost:8080');
             socket.on('open', function () {
                 setTimeout(() => {
@@ -177,23 +292,57 @@ describe('测试Server', function () {
             });
         });
 
-        it('断开连接', function (done) {
-            socket.on('close', function () {
-                setTimeout(() => {
-                    expect(server.clients.size).to.be(0);
-                    done();
-                }, 1000);
-            });
-            socket.close();
+        it('强制发送错误数据促使server断开连接', function (done) {
+            let serverSocketError = false;  //服务器端server是否出现错误
+            server.clients.values().next().value.on('error', () => serverSocketError = true);
+
+            socket.on('close', () => { expect(serverSocketError).to.be.ok(); done(); });
+
+            const testData: any = Buffer.from('123');
+            testData._serialized = true;
+            socket.send('test', testData);
         });
     });
 
-    describe('测试关闭server自动断开所有连接',function(){});
-    describe('测试server端socket出现错误，自动断开',function(){});
-    describe('测试不反序列化收到的数据',function(){});
+    describe.only('测试不反序列化收到的数据', function () {
+        let server: BWS.Server;
+        let socket: BWS.Socket;
+
+        before(function (done) {
+            server = new BWS.Server({ needDeserialize: false });
+            server.on('listening', done);
+        });
+
+        after(function (done) {
+            server.on('close', done)
+            server.close();
+        });
+
+        beforeEach(function name(done) {
+            socket = new BWS.Socket('ws://localhost:8080');
+            socket.on('open', function () {
+                setTimeout(() => {
+                    expect(server.clients.size).to.be(1);
+                    expect(server.clients.values().next().value.platform).be('node');
+                    done();
+                }, 1000);
+            });
+        });
+
+        it('检查收到的数据', function (done) {
+            const sendArray = [0, 1.1, '2', true, false, null, undefined, { a: 123 }, [1, 2, 3], Buffer.from('123')];
+            const sendingData = BWS.Socket.serialize(sendArray);
+            server.clients.values().next().value.on('message', (name, data: Buffer) => {
+                expect(name).to.be('test');
+                expect(sendingData.equals(data)).to.be.ok();
+                done();
+            });
+            socket.send('test', sendArray);
+        });
+    });
 });
 
-describe.only('测试Server Socket', function () {
+describe('测试Server Socket', function () {
     let server: BWS.Server;
 
     let s_socket: BWS.Socket;    //服务器端对应的接口
@@ -375,7 +524,7 @@ describe.only('测试Server Socket', function () {
         })();
     });
 
-    it.only('测试直接发送Buffer', function (done) {
+    it('测试直接发送Buffer', function (done) {
         (async () => {//存在未序列化buffer的情况
             let index = 0;  //接收的顺序
 

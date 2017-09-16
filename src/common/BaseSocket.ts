@@ -439,7 +439,9 @@ export abstract class BaseSocket extends Emitter {
                 }
             } else {
                 const body = this._needDeserialize ? BaseSocket.deserialize(data.slice(header.headerLength)) : data.slice(header.headerLength);
-                this.emit('message', header.messageName, body);
+                setTimeout(() => {  //避免被外层的try catch捕捉到
+                    this.emit('message', header.messageName, body);
+                }, 0);
             }
         } catch (error) {
             this.emit('error', error);
