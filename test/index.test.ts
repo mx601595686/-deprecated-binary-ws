@@ -304,7 +304,7 @@ describe('测试Server', function () {
         });
     });
 
-    describe.only('测试不反序列化收到的数据', function () {
+    describe('测试不反序列化收到的数据', function () {
         let server: BWS.Server;
         let socket: BWS.Socket;
 
@@ -528,17 +528,17 @@ describe('测试Server Socket', function () {
         (async () => {//存在未序列化buffer的情况
             let index = 0;  //接收的顺序
 
-            s_socket.on('message', (name, data: Buffer) => {
+            s_socket.on('message', (name, data) => {
                 index++;
                 switch (name) {
                     case '1':
                         expect(index).to.be(1);
-                        expect(Buffer.from('123').equals(data)).to.be.ok();
+                        expect(Buffer.from('123').equals(data[0])).to.be.ok();
                         break;
 
                     case '2':
                         expect(index).to.be(2);
-                        expect(Buffer.from('asd').equals(data)).to.be.ok();
+                        expect(Buffer.from('asd').equals(data[0])).to.be.ok();
                         done();
                         break;
 
@@ -548,10 +548,14 @@ describe('测试Server Socket', function () {
                 }
             });
 
-            expect(c_socket.send('1', Buffer.from('123')).messageID).to.be(0);
+            expect(c_socket.send('1', BWS.Socket.serialize([Buffer.from('123')])).messageID).to.be(0);
             expect(c_socket.bufferedAmount).to.not.be(0);
 
-            await c_socket.send('2', Buffer.from('asd'), false);
+            await c_socket.send('2', Buffer.from('456'))    // 未经过BWS.Socket.serialize序列化的数据不能被发送
+                .then(() => { throw new Error('不可能执行到这') })
+                .catch(err => expect(err).to.be.a(Error));
+
+            await c_socket.send('2', BWS.Socket.serialize([Buffer.from('asd')]), false);
             expect(c_socket.bufferedAmount).to.be(0);
         })();
     });
@@ -612,7 +616,7 @@ describe('测试Server Socket', function () {
         })();
     });
 
-    it('测试断开连接取消发送', function (done) {
+    it.only('测试断开连接取消发送', function (done) {
         s_socket.on('message', (name, data) => {
             debugger
             done(new Error('不可能执行到这里，代码逻辑存在错误'));
