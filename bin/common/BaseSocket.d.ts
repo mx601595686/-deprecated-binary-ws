@@ -105,18 +105,22 @@ export declare abstract class BaseSocket extends Emitter {
      * 发送数据。发送失败直接抛出异常
      *
      * @param {string} messageName 消息的名称(标题)
-     * @param {(any[] | Buffer)} [data] 要发送的数据。如果是传入的是数组，则数据将使用BaseSocket.serialize() 进行序列化。如果传入的是Buffer，则将直接被发送。如果只发送messageName，也可以留空。
+     * @param {(any[] | Buffer)} [data=[]] 要发送的数据。如果是传入的是数组，则数据将使用BaseSocket.serialize() 进行序列化。如果传入的是Buffer，则将直接被发送。
      * @param {boolean} [needACK=true] 发出的这条消息是否需要确认对方是否已经收到
-     * @returns {Promise<number>} messageID
+     * @returns {(Promise<void> & { messageID: number })} messageID
      * @memberof BaseSocket
      */
-    send(messageName: string, data?: any[] | Buffer, needACK?: boolean): Promise<number>;
+    send(messageName: string, data?: any[] | Buffer, needACK?: boolean): Promise<void> & {
+        messageID: number;
+    };
     /**
-      * 发送内部数据。发送失败直接抛出异常。
+      * 发送内部数据。发送失败直接抛出异常。内部数据默认不需要接收端确认
       * 注意：要在每一个调用的地方做好异常处理
       */
-    protected _sendInternal(messageName: string, data?: any[] | Buffer, needACK?: boolean): Promise<number>;
-    private _send(isInternal, messageName, needACK, data?);
+    protected _sendInternal(messageName: string, data?: any[] | Buffer, needACK?: boolean): Promise<void> & {
+        messageID: number;
+    };
+    private _send(isInternal, messageName, needACK, data);
     /**
      * 需要子类覆写。调用_socket发送数据
      *
@@ -135,6 +139,15 @@ export declare abstract class BaseSocket extends Emitter {
      * @memberof BaseSocket
      */
     protected _receiveData(data: Buffer): void;
+    /**
+     * 取消发送。如果某条消息还没有被取消则可以被取消。取消成功返回true，失败false
+     *
+     * @param {number} messageID 要取消发送消息的messageID
+     * @param {Error} [err] 传递一个error，指示本次发送属于失败
+     * @returns {boolean} 取消成功返回true，失败false
+     * @memberof BaseSocket
+     */
+    cancel(messageID: number, err?: Error): boolean;
     /**
      * 关闭接口。关闭之后会触发close事件
      *

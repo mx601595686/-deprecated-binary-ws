@@ -322,26 +322,26 @@ export abstract class BaseSocket extends Emitter {
      * 发送数据。发送失败直接抛出异常
      * 
      * @param {string} messageName 消息的名称(标题)
-     * @param {(any[] | Buffer)} [data] 要发送的数据。如果是传入的是数组，则数据将使用BaseSocket.serialize() 进行序列化。如果传入的是Buffer，则将直接被发送。如果只发送messageName，也可以留空。
+     * @param {(any[] | Buffer)} [data=[]] 要发送的数据。如果是传入的是数组，则数据将使用BaseSocket.serialize() 进行序列化。如果传入的是Buffer，则将直接被发送。
      * @param {boolean} [needACK=true] 发出的这条消息是否需要确认对方是否已经收到
-     * @returns {Promise<number>} messageID
+     * @returns {(Promise<void> & { messageID: number })} messageID
      * @memberof BaseSocket
      */
-    send(messageName: string, data?: any[] | Buffer, needACK: boolean = true): Promise<number> {
+    send(messageName: string, data: any[] | Buffer = [], needACK: boolean = true) {
         return this._send(false, messageName, needACK, data);
     }
 
     /**
-      * 发送内部数据。发送失败直接抛出异常。      
+      * 发送内部数据。发送失败直接抛出异常。内部数据默认不需要接收端确认      
       * 注意：要在每一个调用的地方做好异常处理
       */
-    protected async _sendInternal(messageName: string, data?: any[] | Buffer, needACK: boolean = false): Promise<number> {
+    protected _sendInternal(messageName: string, data: any[] | Buffer = [], needACK: boolean = false) {
         return this._send(true, messageName, needACK, data);
     }
 
-    private _send(isInternal: boolean, messageName: string, needACK: boolean, data: any[] | Buffer = []): Promise<number> {
-        return new Promise((resolve, reject) => {
-            const msgID = this._messageID++;
+    private _send(isInternal: boolean, messageName: string, needACK: boolean, data: any[] | Buffer): Promise<void> & { messageID: number } {
+        const msgID = this._messageID++;
+        const prom: any = new Promise((resolve, reject) => {
             const header = this._serializeHeader(isInternal, messageName, needACK, msgID);
             const body = Array.isArray(data) ? BaseSocket.serialize(data) : data;
             const sendingData = _Buffer.concat([header, body]);
@@ -354,7 +354,7 @@ export abstract class BaseSocket extends Emitter {
                         return false;
                     else {
                         this._queue.delete(msgID);
-                        err ? reject(err) : resolve(msgID);
+                        err ? reject(err) : resolve();
                         return true;
                     }
                 },
@@ -367,7 +367,7 @@ export abstract class BaseSocket extends Emitter {
                 },
                 ack: (err) => {
                     this._queue.delete(msgID);
-                    err ? reject(err) : resolve(msgID);
+                    err ? reject(err) : resolve();
 
                     if (this._queue.size > 0)   //如果队列中还有，则发送下一条
                         this._queue.values().next().value.send();
@@ -380,6 +380,8 @@ export abstract class BaseSocket extends Emitter {
                 control.send();
             }
         });
+        prom.messageID = msgID;
+        return prom;
     }
 
     /**

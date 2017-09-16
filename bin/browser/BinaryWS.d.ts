@@ -14,7 +14,9 @@ export default class BinaryWS extends BaseSocket {
     /**
      * 浏览器版除了可以直接发送Buffer之外还可以直接发送ArrayBuffer、TypedBuffer、Blob
      */
-    send(messageName: string, data?: any[] | any, needACK?: boolean): Promise<number>;
+    send(messageName: string, data?: any[] | any, needACK?: boolean): Promise<void> & {
+        messageID: number;
+    };
     protected _sendData(data: Buffer): Promise<void>;
     close(): void;
 }

@@ -46,7 +46,7 @@ export default class BinaryWS extends BaseSocket {
     /**
      * 浏览器版除了可以直接发送Buffer之外还可以直接发送ArrayBuffer、TypedBuffer、Blob
      */
-    send(messageName: string, data?: any[] | any, needACK: boolean = true): Promise<number> {
+    send(messageName: string, data?: any[] | any, needACK: boolean = true) {
         if (Array.isArray(data)) {
             data = data.map(item => {
                 if (isBuffer(item)) {
@@ -59,6 +59,8 @@ export default class BinaryWS extends BaseSocket {
                     return item;
                 }
             });
+        } else if (isBuffer(data)) {
+            data = data;
         } else if (isBlob(data)) {
             data = blobToBuffer(data)
         } else if (isArrayBuffer(data) || isTypedBuffer(data)) {
