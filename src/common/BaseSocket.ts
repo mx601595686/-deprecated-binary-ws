@@ -398,13 +398,12 @@ export abstract class BaseSocket extends Emitter {
     /**
      * 解析接收到数据。子类接收到消息后需要触发这个方法
      * 
-     * @private
+     * @protected
      * @param {Buffer} data 接收到数据
      * @memberof BaseSocket
      */
     protected _receiveData(data: Buffer) {
         const header = this._deserializeHeader(data);
-        console.log(header);
 
         if (header.needACK)
             this._sendInternal('ack', [header.messageID]).catch(err => this.emit('error', err));

@@ -134,7 +134,7 @@ export declare abstract class BaseSocket extends Emitter {
     /**
      * 解析接收到数据。子类接收到消息后需要触发这个方法
      *
-     * @private
+     * @protected
      * @param {Buffer} data 接收到数据
      * @memberof BaseSocket
      */
