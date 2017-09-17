@@ -1,4 +1,3 @@
-import { Socket } from './../src/server/Socket';
 import expect = require('expect.js');
 import * as BWS from '../';
 import * as http from 'http';
