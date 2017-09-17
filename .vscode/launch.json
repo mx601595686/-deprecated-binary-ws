@@ -7,10 +7,10 @@
         {
             "type": "node",
             "request": "launch",
-            "name": "开发调试",
+            "name": "浏览器测试",
             "program": "${workspaceRoot}/node_modules/ts-node/dist/_bin.js",
             "args": [
-                "${workspaceRoot}/test/development-test/index.ts"
+                "${workspaceRoot}/test/browser/index.ts"
             ]
         },
         {
