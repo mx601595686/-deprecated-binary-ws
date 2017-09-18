@@ -10,7 +10,7 @@
             "name": "浏览器测试",
             "program": "${workspaceRoot}/node_modules/ts-node/dist/_bin.js",
             "args": [
-                "${workspaceRoot}/test/browser/index.ts"
+                "${workspaceRoot}/test/browser/server.ts"
             ]
         },
         {

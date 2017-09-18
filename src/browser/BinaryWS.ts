@@ -11,18 +11,18 @@ import { BaseSocketConfig } from './../common/BaseSocketConfig';
 import { BaseSocket } from "../common/BaseSocket";
 import { ReadyState } from "../common/ReadyState";
 
-export default class BinaryWS extends BaseSocket {
+export class BinaryWS extends BaseSocket {
 
     readonly socket: WebSocket;
 
     /**
-     * @param {string} url 服务器地址，如果不指定，默认连接的是当前域名下的根
+     * @param {string} [url] 服务器地址，如果不指定，默认连接的是当前域名下的根
      */
-    constructor(url: string)
+    constructor(url?: string)
     /**
-     * @param configs 端口的配置
+     * @param  {BaseSocketConfig} [configs] 端口的配置
      */
-    constructor(configs: BaseSocketConfig)
+    constructor(configs?: BaseSocketConfig)
     constructor(args?: any) {
         const cf: BaseSocketConfig = {
             url: `ws${location.protocol === 'https:' ? 's' : ''}://${location.host}`
