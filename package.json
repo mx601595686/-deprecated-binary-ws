@@ -5,9 +5,9 @@
   "main": "./bin/server/index.js",
   "types": "./bin/server/index.d.ts",
   "scripts": {
-    "test": "./node_modules/.bin/mocha --compilers ts:ts-node/register,tsx:ts-node/register",
-    "compile": "./node_modules/.bin/gulp compile",
-    "package": "./node_modules/.bin/webpack"
+    "test": "mocha --compilers ts:ts-node/register,tsx:ts-node/register ./test/server.test.ts",
+    "compile": "gulp compile",
+    "package": "webpack"
   },
   "repository": {
     "type": "git",
