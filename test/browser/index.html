@@ -9,6 +9,9 @@
     <link rel="stylesheet" href="/node_modules/mocha/mocha.css">
     <script src="/node_modules/mocha/mocha.js"></script>
     <script src="/node_modules/expect.js/index.js"></script>
+    <script>
+        mocha.setup('bdd'); mocha.checkLeaks();
+    </script>
     <script src="/test/browser/index.test.ts"></script>
 </head>
 
@@ -16,8 +19,6 @@
     <div id="mocha"></div>
 
     <script>
-        mocha.setup('bdd');
-        mocha.checkLeaks();
         mocha.run();
     </script>
 </body>

@@ -24,24 +24,24 @@ const server = http.createServer((req, res) => {
                 filename: 'index.js',
                 path: '/'
             },
+            devtool: 'inline-source-map',
             module: {
                 rules: [
                     {
-                        test: /\.tsx?$/,
+                        test: /\.ts?$/,
                         use: 'ts-loader',
                         exclude: /node_modules/
                     }
                 ]
             },
             resolve: {
-                extensions: [".tsx", ".ts", ".js"]
+                extensions: [".ts", ".js"]
             }
         });
         compiler.outputFileSystem = mfs;
         compiler.run((err, stats) => {
-            log(stats.toString())
             if (err) {
-                log(err);
+                log(stats.toString(), err);
                 res.statusCode = 500;
                 res.end();
             } else {

@@ -1940,15 +1940,15 @@ function isLooseTypedArray(arr) {
 
 "use strict";
 
+function __export(m) {
+    for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
+}
+Object.defineProperty(exports, "__esModule", { value: true });
 // 默认导出。
-const BinaryWS_1 = __webpack_require__(4);
-const ReadyState_1 = __webpack_require__(16);
-module.exports = {
-    Socket: BinaryWS_1.BinaryWS,
-    ReadyState: ReadyState_1.ReadyState
-};
+__export(__webpack_require__(4));
+__export(__webpack_require__(16));
 
-//# sourceMappingURL=data:application/json;charset=utf8;base64,eyJ2ZXJzaW9uIjozLCJzb3VyY2VzIjpbImJyb3dzZXIvaW5kZXgudHMiXSwibmFtZXMiOltdLCJtYXBwaW5ncyI6IjtBQUFBLFFBQVE7QUFDUix5Q0FBMkM7QUFDM0MscURBQXVEO0FBRXZELGlCQUFTO0lBQ0wsTUFBTSxFQUFFLG1CQUFDO0lBQ1QsVUFBVSxFQUFFLHVCQUFDO0NBQ2hCLENBQUEiLCJmaWxlIjoiYnJvd3Nlci9pbmRleC5qcyIsInNvdXJjZXNDb250ZW50IjpbIi8vIOm7mOiupOWvvOWHuuOAglxyXG5pbXBvcnQgeyBCaW5hcnlXUyBhcyBzIH0gZnJvbSAnLi9CaW5hcnlXUyc7XHJcbmltcG9ydCB7IFJlYWR5U3RhdGUgYXMgciB9IGZyb20gJy4uL2NvbW1vbi9SZWFkeVN0YXRlJztcclxuXHJcbmV4cG9ydCA9IHtcclxuICAgIFNvY2tldDogcyxcclxuICAgIFJlYWR5U3RhdGU6IHJcclxufSJdfQ==
+//# sourceMappingURL=data:application/json;charset=utf8;base64,eyJ2ZXJzaW9uIjozLCJzb3VyY2VzIjpbImJyb3dzZXIvaW5kZXgudHMiXSwibmFtZXMiOltdLCJtYXBwaW5ncyI6Ijs7Ozs7QUFBQSxRQUFRO0FBQ1IsZ0NBQTJCO0FBQzNCLDBDQUFxQyIsImZpbGUiOiJicm93c2VyL2luZGV4LmpzIiwic291cmNlc0NvbnRlbnQiOlsiLy8g6buY6K6k5a+85Ye644CCXHJcbmV4cG9ydCAqIGZyb20gJy4vQmluYXJ5V1MnO1xyXG5leHBvcnQgKiBmcm9tICcuLi9jb21tb24vUmVhZHlTdGF0ZSc7XHJcblxyXG4iXX0=
 
 
 /***/ }),
