@@ -4,11 +4,13 @@ import * as path from 'path';
 import * as BWS from '../../';
 import opener = require('opener');
 import * as webpack from 'webpack';
-import memoryFS = require('memory-fs');
+import webpackConfig from './webpack.config';
 
 function log(...args: any[]) {
     console.log(`[${(new Date).toLocaleTimeString()}]  `, ...args);
 }
+
+const compiler: webpack.Compiler = webpack(webpackConfig);
 
 const server = http.createServer((req, res) => {
     let url = req.url || '';
@@ -17,35 +19,13 @@ const server = http.createServer((req, res) => {
         res.writeHead(301, { 'Location': '/test/browser/index.html' });
         res.end();
     } else if (url.endsWith('index.test.ts')) {
-        const mfs = new memoryFS();
-        const compiler = webpack({
-            entry: path.resolve(__dirname, './index.test.ts'),
-            output: {
-                filename: 'index.js',
-                path: '/'
-            },
-            devtool: 'inline-source-map',
-            module: {
-                rules: [
-                    {
-                        test: /\.ts?$/,
-                        use: 'ts-loader',
-                        exclude: /node_modules/
-                    }
-                ]
-            },
-            resolve: {
-                extensions: [".ts", ".js"]
-            }
-        });
-        compiler.outputFileSystem = mfs;
         compiler.run((err, stats) => {
-            if (err) {
-                log(stats.toString(), err);
+            if (stats.hasErrors()) {
+                log(stats.toString());
                 res.statusCode = 500;
                 res.end();
             } else {
-                const content = mfs.readFileSync("/index.js");
+                const content = fs.readFileSync(path.resolve(__dirname, "./bin/index.js"));
                 res.end(content);
             }
         });
