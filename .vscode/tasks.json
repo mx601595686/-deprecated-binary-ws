@@ -9,7 +9,12 @@
             "command": "npm run compile"
         },
         {
-            "taskName": "测试",
+            "taskName": "浏览器打包",
+            "type": "shell",
+            "command": "npm run package"
+        },
+        {
+            "taskName": "服务器端测试",
             "type": "shell",
             "command": "npm run test"
         }

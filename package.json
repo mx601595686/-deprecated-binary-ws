@@ -6,7 +6,8 @@
   "types": "./bin/server/index.d.ts",
   "scripts": {
     "test": "./node_modules/.bin/mocha --compilers ts:ts-node/register,tsx:ts-node/register",
-    "compile": "./node_modules/.bin/gulp compile"
+    "compile": "./node_modules/.bin/gulp compile",
+    "package": "./node_modules/.bin/webpack"
   },
   "repository": {
     "type": "git",
@@ -27,22 +28,24 @@
     "@types/component-emitter": "^1.2.6",
     "@types/expect.js": "^0.3.29",
     "@types/fs-extra": "^4.0.2",
+    "@types/memory-fs": "^0.3.0",
     "@types/mocha": "^2.2.40",
     "@types/node": "^7.0.13",
     "@types/opener": "^1.4.0",
-    "@types/systemjs": "^0.20.5",
+    "@types/webpack": "^3.0.10",
     "@types/ws": "^3.0.2",
     "expect.js": "^0.3.1",
     "fs-extra": "^4.0.2",
     "gulp": "^3.9.1",
     "gulp-sourcemaps": "^2.4.1",
     "gulp-typescript": "^3.1.5",
+    "memory-fs": "^0.4.1",
     "mocha": "^3.2.0",
     "opener": "^1.4.3",
-    "plugin-typescript": "^7.1.0",
-    "systemjs": "^0.20.18",
+    "ts-loader": "^2.3.7",
     "ts-node": "^3.0.4",
-    "typescript": "^2.2.2"
+    "typescript": "^2.5.2",
+    "webpack": "^3.6.0"
   },
   "dependencies": {
     "blob-to-buffer": "^1.2.6",
