@@ -1,9 +1,10 @@
 "use strict";
-function __export(m) {
-    for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
-}
-Object.defineProperty(exports, "__esModule", { value: true });
-__export(require("./BinaryWS"));
-__export(require("../common/ReadyState"));
+// 默认导出。
+const BinaryWS_1 = require("./BinaryWS");
+const ReadyState_1 = require("../common/ReadyState");
+module.exports = {
+    Socket: BinaryWS_1.BinaryWS,
+    ReadyState: ReadyState_1.ReadyState
+};
 
-//# sourceMappingURL=data:application/json;charset=utf8;base64,eyJ2ZXJzaW9uIjozLCJzb3VyY2VzIjpbImJyb3dzZXIvaW5kZXgudHMiXSwibmFtZXMiOltdLCJtYXBwaW5ncyI6Ijs7Ozs7QUFBQSxnQ0FBMkI7QUFFM0IsMENBQXFDIiwiZmlsZSI6ImJyb3dzZXIvaW5kZXguanMiLCJzb3VyY2VzQ29udGVudCI6WyJleHBvcnQgKiBmcm9tICcuL0JpbmFyeVdTJztcclxuXHJcbmV4cG9ydCAqIGZyb20gJy4uL2NvbW1vbi9SZWFkeVN0YXRlJztcclxuXHJcbiJdfQ==
+//# sourceMappingURL=data:application/json;charset=utf8;base64,eyJ2ZXJzaW9uIjozLCJzb3VyY2VzIjpbImJyb3dzZXIvaW5kZXgudHMiXSwibmFtZXMiOltdLCJtYXBwaW5ncyI6IjtBQUFBLFFBQVE7QUFDUix5Q0FBMkM7QUFDM0MscURBQXVEO0FBRXZELGlCQUFTO0lBQ0wsTUFBTSxFQUFFLG1CQUFDO0lBQ1QsVUFBVSxFQUFFLHVCQUFDO0NBQ2hCLENBQUEiLCJmaWxlIjoiYnJvd3Nlci9pbmRleC5qcyIsInNvdXJjZXNDb250ZW50IjpbIi8vIOm7mOiupOWvvOWHuuOAglxyXG5pbXBvcnQgeyBCaW5hcnlXUyBhcyBzIH0gZnJvbSAnLi9CaW5hcnlXUyc7XHJcbmltcG9ydCB7IFJlYWR5U3RhdGUgYXMgciB9IGZyb20gJy4uL2NvbW1vbi9SZWFkeVN0YXRlJztcclxuXHJcbmV4cG9ydCA9IHtcclxuICAgIFNvY2tldDogcyxcclxuICAgIFJlYWR5U3RhdGU6IHJcclxufSJdfQ==
