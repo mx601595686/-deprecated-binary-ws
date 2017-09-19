@@ -16,6 +16,7 @@ export declare abstract class BaseSocket extends Emitter {
      */
     private _messageID;
     private readonly _needDeserialize;
+    private readonly _maxPayload;
     /**
      * 等待发送消息的队列。key：messageID。
      */

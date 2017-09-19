@@ -23,6 +23,8 @@ export abstract class BaseSocket extends Emitter {
 
     private readonly _needDeserialize: boolean;
 
+    private readonly _maxPayload: number | undefined;
+
     /**
      * 等待发送消息的队列。key：messageID。
      */
@@ -93,6 +95,7 @@ export abstract class BaseSocket extends Emitter {
 
         this.url = configs.url;
         this._needDeserialize = configs.needDeserialize === undefined ? true : configs.needDeserialize;
+        this._maxPayload = configs.maxPayload;
         this.platform = platform;
 
         if (configs.socket === undefined) {
@@ -353,6 +356,7 @@ export abstract class BaseSocket extends Emitter {
         const msgID = this._messageID++;
         const prom: any = new Promise((resolve, reject) => {
             const header = this._serializeHeader(isInternal, messageName, needACK, msgID);
+
             let sendingData: Buffer;
             if (Array.isArray(data)) {
                 sendingData = _Buffer.concat([header, BaseSocket.serialize(data)]);
@@ -363,6 +367,10 @@ export abstract class BaseSocket extends Emitter {
                     throw new Error('要被发送的Buffer并不是BaseSocket.serialize()序列化产生的');
             } else {
                 throw new Error(`传入的数据类型存在问题，必须是数组或Buffer。实际类型：${Object.prototype.toString.call(data)}`);
+            }
+
+            if(this._maxPayload !== undefined && sendingData.length > this._maxPayload){
+                throw new Error('发送的数据大小超过了限制');
             }
 
             const control: QueueData = {
@@ -424,7 +432,7 @@ export abstract class BaseSocket extends Emitter {
     protected _receiveData(data: Buffer) {
         try {
             const header = this._deserializeHeader(data);
-console.log(header)
+            console.log(header)
             if (header.needACK)
                 this._sendInternal('ack', [header.messageID]).catch(err => this.emit('error', err));
 

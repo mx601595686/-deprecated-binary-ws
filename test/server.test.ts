@@ -13,6 +13,7 @@ describe('测试Server', function () {
 
             it('测试listening事件', function (done) {
                 server = new BWS.Server();
+                server.on('error', err => { throw err });
                 server.on('listening', done);
             });
 
@@ -32,6 +33,7 @@ describe('测试Server', function () {
 
             it('测试listening事件', function (done) {
                 server = new BWS.Server(8000);
+                server.on('error', err => { throw err });
                 server.on('listening', done);
             });
 
@@ -51,6 +53,7 @@ describe('测试Server', function () {
 
             it('测试listening事件', function (done) {
                 server = new BWS.Server('localhost', 8880);
+                server.on('error', err => { throw err });
                 server.on('listening', done);
             });
 
@@ -76,6 +79,7 @@ describe('测试Server', function () {
                 hs.listen(8888);
 
                 server = new BWS.Server(hs);
+                server.on('error', err => { throw err });
                 server.on('listening', done);
             });
 
@@ -101,6 +105,7 @@ describe('测试Server', function () {
                 hs.listen(8880);
 
                 server = new BWS.Server({ port: 8080, host: 'localhost', server: hs });
+                server.on('error', err => { throw err });
                 server.on('listening', done);
             });
 
@@ -130,6 +135,7 @@ describe('测试Server', function () {
 
         before(function (done) {
             server = new TestServer();
+            server.on('error', err => { throw err });
             server.on('listening', done);
         });
 
@@ -157,6 +163,7 @@ describe('测试Server', function () {
 
         before(function (done) {
             server = new BWS.Server();
+            server.on('error', err => { throw err });
             server.on('listening', done);
         });
 
@@ -238,6 +245,7 @@ describe('测试Server', function () {
 
         before(function (done) {
             server = new BWS.Server();
+            server.on('error', err => { throw err });
             server.on('listening', done);
         });
 
@@ -272,6 +280,7 @@ describe('测试Server', function () {
 
         before(function (done) {
             server = new BWS.Server();
+            server.on('error', err => { throw err });
             server.on('listening', done);
         });
 
@@ -309,6 +318,7 @@ describe('测试Server', function () {
 
         before(function (done) {
             server = new BWS.Server({ needDeserialize: false });
+            server.on('error', err => { throw err });
             server.on('listening', done);
         });
 
@@ -351,11 +361,12 @@ describe('测试Server Socket', function () {
 
         before(function (done) {    // 打开服务器
             server = new BWS.Server();
+            server.on('error', err => { throw err });
             server.on('listening', done);
         });
 
         after(function (done) {
-            server.on('close', done)
+            server.on('close', done);
             server.close();
         });
 
@@ -626,6 +637,7 @@ describe('测试Server Socket', function () {
 
         before(function (done) {    // 打开服务器
             server = new BWS.Server();
+            server.on('error', err => { throw err });
             server.on('listening', done);
         });
 
@@ -666,6 +678,132 @@ describe('测试Server Socket', function () {
             });
 
             server.close();
+        });
+    });
+
+    describe('数据包大小限制测试', function () {
+        let server: BWS.Server;
+
+        before(function (done) {    // 打开服务器
+            server = new BWS.Server({ maxPayload: 100 });
+            server.on('error', err => { throw err });
+            server.on('listening', done);
+        });
+
+        after(function (done) {
+            server.on('close', done);
+            server.close();
+        });
+
+        describe('在限制范围之内', function () {
+            let s_socket: BWS.Socket;    //服务器端对应的接口
+            let c_socket: BWS.Socket;    //客户端接口
+
+            beforeEach(function (done) {    //创建连接
+                c_socket = new BWS.Socket('ws://localhost:8080');
+                c_socket.on('error', (err) => { throw err });
+                c_socket.on('open', () => {
+                    expect(server.clients.size).to.be(1);
+                    s_socket = server.clients.values().next().value;
+                    done();
+                });
+            });
+
+            afterEach(function (done) {
+                s_socket.on('close', () => {
+                    (<any>s_socket) = undefined;
+                    (<any>c_socket) = undefined;
+                    done();
+                });
+                c_socket.close();
+            });
+
+            it('测试在限制范围之内', function (done) {
+                s_socket.on('message', (name, data) => {
+                    expect(name).to.be('1');
+                    expect(Buffer.alloc(10).fill(1).equals(data[0])).to.be.ok();
+                    done();
+                });
+                c_socket.send('1', [Buffer.alloc(10).fill(1)]);
+            });
+        });
+
+        describe('超过限制的范围', function () {
+            let s_socket: BWS.Socket;    //服务器端对应的接口
+            let c_socket: BWS.Socket;    //客户端接口
+
+            beforeEach(function (done) {    //创建连接
+                c_socket = new BWS.Socket('ws://localhost:8080');
+                c_socket.on('error', (err) => { throw err });
+                c_socket.on('open', () => {
+                    expect(server.clients.size).to.be(1);
+                    s_socket = server.clients.values().next().value;
+                    done();
+                });
+            });
+
+            afterEach(function () {
+                (<any>s_socket) = undefined;
+                (<any>c_socket) = undefined;
+            });
+
+            it('未设置maxPayload', function (done) {
+                let s_socket_close = false;
+                let s_socket_error = false;
+                let c_socket_error = false;
+
+                s_socket.on('message', (name, data) => {
+                    done(new Error('不可能执行到这里，代码逻辑存在错误'));
+                });
+                s_socket.on('close', () => s_socket_close = true);
+                s_socket.on('error', () => s_socket_error = true);
+
+                c_socket.on('close', function () {
+                    setTimeout(() => {
+                        expect(s_socket_close).to.be.ok();
+                        expect(s_socket_error).to.be.ok();
+                        expect(c_socket_error).to.be.ok();
+                        done();
+                    }, 1000);
+                });
+
+                c_socket.send('1', [Buffer.alloc(1000)])
+                    .then(() => { done(new Error('不可能执行到这里，代码逻辑存在错误')) })
+                    .catch(err => { expect(err).to.be.a(Error); c_socket_error = true; });
+            });
+        });
+
+        describe('超过限制的范围2', function () {
+            let s_socket: BWS.Socket;    //服务器端对应的接口
+            let c_socket: BWS.Socket;    //客户端接口
+
+            beforeEach(function (done) {    //创建连接
+                c_socket = new BWS.Socket({ url: 'ws://localhost:8080', maxPayload: 100 });
+                c_socket.on('error', (err) => { throw err });
+                c_socket.on('open', () => {
+                    expect(server.clients.size).to.be(1);
+                    s_socket = server.clients.values().next().value;
+                    done();
+                });
+            });
+
+            afterEach(function (done) {
+                s_socket.on('close', () => {
+                    (<any>s_socket) = undefined;
+                    (<any>c_socket) = undefined;
+                    done();
+                });
+                c_socket.close();
+            });
+
+            it('设置了maxPayload', function (done) {
+                s_socket.on('message', () => done(new Error('不可能执行到这里，代码逻辑存在错误')));
+                s_socket.on('error', () => done(new Error('不可能执行到这里，代码逻辑存在错误')));
+
+                c_socket.send('1', [Buffer.alloc(1000)])
+                    .then(() => { done(new Error('不可能执行到这里，代码逻辑存在错误')) })
+                    .catch(err => { expect(err).to.be.a(Error); done(); });
+            });
         });
     });
 });
