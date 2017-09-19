@@ -1,6 +1,6 @@
 {
   "name": "binary-ws",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Simply serialize the data into binary and use websocket transfer between the browser and the server",
   "main": "./bin/server/index.js",
   "types": "./bin/server/index.d.ts",

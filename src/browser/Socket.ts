@@ -11,7 +11,7 @@ import { BaseSocketConfig } from './../common/BaseSocketConfig';
 import { BaseSocket } from "../common/BaseSocket";
 import { ReadyState } from "../common/ReadyState";
 
-export class BinaryWS extends BaseSocket {
+export class Socket extends BaseSocket {
 
     readonly socket: WebSocket;
 

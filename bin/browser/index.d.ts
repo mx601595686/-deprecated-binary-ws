@@ -1,2 +1,2 @@
-export * from './BinaryWS';
+export * from './Socket';
 export * from '../common/ReadyState';

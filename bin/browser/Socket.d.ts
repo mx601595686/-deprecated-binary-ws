@@ -1,7 +1,7 @@
 /// <reference types="node" />
 import { BaseSocketConfig } from './../common/BaseSocketConfig';
 import { BaseSocket } from "../common/BaseSocket";
-export declare class BinaryWS extends BaseSocket {
+export declare class Socket extends BaseSocket {
     readonly socket: WebSocket;
     /**
      * @param {string} [url] 服务器地址，如果不指定，默认连接的是当前域名下的根

@@ -1,7 +1,7 @@
 {
     "compilerOptions": {
         "module": "commonjs",
-        "target": "es2017",
+        "target": "es6",
         "removeComments": false,
         "preserveConstEnums": false,
         "declaration": true,
@@ -9,7 +9,7 @@
         "noEmitOnError": true,
         "strict": true,
         "lib": [
-            "es2017",
+            "es2016",
             "dom",
             "dom.iterable"
         ]
