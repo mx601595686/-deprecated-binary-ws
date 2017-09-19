@@ -15,6 +15,10 @@ export interface QueueData {
      */
     readonly messageID: number;
     /**
+     * 消息是否已经发送出了
+     */
+    sent: boolean;
+    /**
      * 如果数据还没有被发送，则可以被取消。取消成功返回true，失败返回false
      *
      * @param {Error} [err] 传递一个error，指示本次发送属于失败

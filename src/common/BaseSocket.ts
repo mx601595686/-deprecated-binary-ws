@@ -105,12 +105,10 @@ export abstract class BaseSocket extends Emitter {
         }
 
         this.on('close', () => {    //如果断开，终止所有还未发送的消息
-            for (let item of this._queue.values()) {
-                item.cancel(new Error('连接中断'));
-            }
-
-            if (this._queue.size > 0) { //取消正在发送的
-                this._queue.values().next().value.ack(new Error('连接中断'));
+            for (let item of [...this._queue.values()].reverse()) { //从后向前取消
+                const result = item.cancel(new Error('连接中断'));
+                if (result === false)
+                    item.ack(new Error('连接中断'));    //取消正在发送的
             }
         });
     }
@@ -377,8 +375,9 @@ export abstract class BaseSocket extends Emitter {
             const control: QueueData = {
                 data: sendingData,
                 messageID: msgID,
+                sent: false,
                 cancel: (err) => {  //还未发送之前才可以取消
-                    if (prior || this._queue.values().next().value === control)  //位于队列第一个表示正在发送
+                    if (control.sent)
                         return false;
                     else {
                         this._queue.delete(msgID);
@@ -387,6 +386,9 @@ export abstract class BaseSocket extends Emitter {
                     }
                 },
                 send: () => {
+                    if (control.sent) return;   //避免重复发送
+                    control.sent = true;
+
                     if (needACK) {
                         this._sendData(sendingData).catch(control.ack);
                     } else {
@@ -434,7 +436,7 @@ export abstract class BaseSocket extends Emitter {
     protected _receiveData(data: Buffer) {
         try {
             const header = this._deserializeHeader(data);
-            console.log(header)
+            //console.log(header)
             if (header.needACK)
                 this._sendInternal('ack', [header.messageID]).catch(err => this.emit('error', err));
 

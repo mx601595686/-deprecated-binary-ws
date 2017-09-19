@@ -627,6 +627,141 @@ describe('测试Server Socket', function () {
                 expect(c_socket.bufferedAmount).to.be(0);
             })();
         });
+
+        it('测试优先发送', function (done) {
+            (async () => {
+                let index = 0;  //接收的顺序
+
+                s_socket.on('message', (name, data) => {
+                    index++;
+                    switch (name) {
+                        case '1':
+                            expect(index).to.be(1);
+
+                            expect(data).to.be.empty();
+                            break;
+
+                        case '2':
+                            expect(index).to.be(2);
+
+                            expect(data[0]).to.be(0);
+                            expect(data[1]).to.be(1.1);
+                            expect(data[2]).to.be('2');
+                            expect(data[3]).to.be(true);
+                            expect(data[4]).to.be(false);
+                            expect(data[5]).to.be(null);
+                            expect(data[6]).to.be(undefined);
+                            expect(data[7]).to.be.eql({ a: 123 });
+                            expect(data[8]).to.be.eql([1, 2, 3]);
+                            expect(Buffer.from('123').equals(data[9])).to.be.ok();
+                            break;
+
+                        case '3':
+                            expect(index).to.be(4);
+
+                            expect(data).to.be.empty();
+                            done();
+                            break;
+
+                        case '4':
+                            expect(index).to.be(3);
+
+                            expect(data[0]).to.be(1);
+                            expect(data[1]).to.be(2.1);
+                            expect(data[2]).to.be('3');
+                            expect(data[3]).to.be(false);
+                            expect(data[4]).to.be(true);
+                            expect(data[5]).to.be(undefined);
+                            expect(data[6]).to.be(null);
+                            expect(data[7]).to.be.eql({ a: 456 });
+                            expect(data[8]).to.be.eql([4, 5, 6]);
+                            expect(Buffer.from('789').equals(data[9])).to.be.ok();
+                            break;
+
+                        default:
+                            done(new Error('接收到的消息名称有问题：' + name));
+                            break;
+                    }
+                });
+
+                c_socket.send('1');
+
+                c_socket.send('2', [0, 1.1, '2', true, false, null, undefined, { a: 123 }, [1, 2, 3], Buffer.from('123')], true, true);
+
+                c_socket.send('3', undefined, false);
+
+                await c_socket.send('4', [1, 2.1, '3', false, true, undefined, null, { a: 456 }, [4, 5, 6], Buffer.from('789')], false, true);
+                expect(c_socket.bufferedAmount).to.not.be(0);
+            })();
+        });
+
+        it('测试优先发送+取消发送', function (done) {
+            (async () => {
+                let index = 0;  //接收的顺序
+
+                s_socket.on('message', (name, data) => {
+                    index++;
+                    switch (name) {
+                        case '1':
+                            expect(index).to.be(1);
+
+                            expect(data).to.be.empty();
+                            break;
+
+                        case '2':
+                            expect(index).to.be(2);
+
+                            expect(data[0]).to.be(0);
+                            expect(data[1]).to.be(1.1);
+                            expect(data[2]).to.be('2');
+                            expect(data[3]).to.be(true);
+                            expect(data[4]).to.be(false);
+                            expect(data[5]).to.be(null);
+                            expect(data[6]).to.be(undefined);
+                            expect(data[7]).to.be.eql({ a: 123 });
+                            expect(data[8]).to.be.eql([1, 2, 3]);
+                            expect(Buffer.from('123').equals(data[9])).to.be.ok();
+                            break;
+
+                        case '3':
+                            done(new Error('程序逻辑存在问题'));             
+                            break;
+
+                        case '4':
+                            expect(index).to.be(3);
+
+                            expect(data[0]).to.be(1);
+                            expect(data[1]).to.be(2.1);
+                            expect(data[2]).to.be('3');
+                            expect(data[3]).to.be(false);
+                            expect(data[4]).to.be(true);
+                            expect(data[5]).to.be(undefined);
+                            expect(data[6]).to.be(null);
+                            expect(data[7]).to.be.eql({ a: 456 });
+                            expect(data[8]).to.be.eql([4, 5, 6]);
+                            expect(Buffer.from('789').equals(data[9])).to.be.ok();
+                            done();
+                            break;
+
+                        default:
+                            done(new Error('接收到的消息名称有问题：' + name));
+                            break;
+                    }
+                });
+
+                const m1 = c_socket.send('1');
+                expect(c_socket.cancel(m1.messageID)).to.not.be.ok();
+
+                const m2 = c_socket.send('2', [0, 1.1, '2', true, false, null, undefined, { a: 123 }, [1, 2, 3], Buffer.from('123')], true, true);
+                expect(c_socket.cancel(m2.messageID)).to.not.be.ok();
+
+                const m3 = c_socket.send('3', undefined, false);
+                expect(c_socket.cancel(m3.messageID)).to.be.ok();
+
+                const m4 = await c_socket.send('4', [1, 2.1, '3', false, true, undefined, null, { a: 456 }, [4, 5, 6], Buffer.from('789')], false, true);
+                expect(c_socket.bufferedAmount).to.not.be(0);
+            })();
+        });
     });
 
     describe('连接中断测试', function () {
