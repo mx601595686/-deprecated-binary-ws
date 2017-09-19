@@ -109,20 +109,21 @@ export declare abstract class BaseSocket extends Emitter {
      * @param {string} messageName 消息的名称(标题)
      * @param {(any[] | Buffer)} [data=[]] 要发送的数据。如果是传入的是数组，则数据将使用BaseSocket.serialize() 进行序列化。如果传入的是Buffer，则将直接被发送。(注意：传入的Buffer必须是BaseSocket.serialize()产生的)
      * @param {boolean} [needACK=true] 发出的这条消息是否需要确认对方是否已经收到
+     * @param {boolean} [prior=false] 是否直接发送（不在缓冲队列中排队。默认false）
      * @returns {(Promise<void> & { messageID: number })} messageID
      * @memberof BaseSocket
      */
-    send(messageName: string, data?: any[] | Buffer, needACK?: boolean): Promise<void> & {
+    send(messageName: string, data?: any[] | Buffer, needACK?: boolean, prior?: boolean): Promise<void> & {
         messageID: number;
     };
     /**
-      * 发送内部数据。发送失败直接抛出异常。内部数据默认不需要接收端确认
+      * 发送内部数据。发送失败直接抛出异常。内部数据默认不需要接收端确认 ，并且默认优先发送
       * 注意：要在每一个调用的地方做好异常处理
       */
-    protected _sendInternal(messageName: string, data?: any[] | Buffer, needACK?: boolean): Promise<void> & {
+    protected _sendInternal(messageName: string, data?: any[] | Buffer, needACK?: boolean, prior?: boolean): Promise<void> & {
         messageID: number;
     };
-    private _send(isInternal, messageName, needACK, data);
+    private _send(isInternal, prior, messageName, needACK, data);
     /**
      * 需要子类覆写。调用_socket发送数据
      *

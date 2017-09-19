@@ -337,27 +337,28 @@ export abstract class BaseSocket extends Emitter {
      * @param {string} messageName 消息的名称(标题)
      * @param {(any[] | Buffer)} [data=[]] 要发送的数据。如果是传入的是数组，则数据将使用BaseSocket.serialize() 进行序列化。如果传入的是Buffer，则将直接被发送。(注意：传入的Buffer必须是BaseSocket.serialize()产生的)
      * @param {boolean} [needACK=true] 发出的这条消息是否需要确认对方是否已经收到
+     * @param {boolean} [prior=false] 是否直接发送（不在缓冲队列中排队。默认false）
      * @returns {(Promise<void> & { messageID: number })} messageID
      * @memberof BaseSocket
      */
-    send(messageName: string, data: any[] | Buffer = [], needACK: boolean = true) {
-        return this._send(false, messageName, needACK, data);
+    send(messageName: string, data: any[] | Buffer = [], needACK: boolean = true, prior: boolean = false) {
+        return this._send(false, prior, messageName, needACK, data);
     }
 
     /**
-      * 发送内部数据。发送失败直接抛出异常。内部数据默认不需要接收端确认      
+      * 发送内部数据。发送失败直接抛出异常。内部数据默认不需要接收端确认 ，并且默认优先发送     
       * 注意：要在每一个调用的地方做好异常处理
       */
-    protected _sendInternal(messageName: string, data: any[] | Buffer = [], needACK: boolean = false) {
-        return this._send(true, messageName, needACK, data);
+    protected _sendInternal(messageName: string, data: any[] | Buffer = [], needACK: boolean = false, prior: boolean = true) {
+        return this._send(true, prior, messageName, needACK, data);
     }
 
-    private _send(isInternal: boolean, messageName: string, needACK: boolean, data: any[] | Buffer): Promise<void> & { messageID: number } {
+    private _send(isInternal: boolean, prior: boolean, messageName: string, needACK: boolean, data: any[] | Buffer): Promise<void> & { messageID: number } {
         const msgID = this._messageID++;
         const prom: any = new Promise((resolve, reject) => {
             const header = this._serializeHeader(isInternal, messageName, needACK, msgID);
 
-            let sendingData: Buffer;
+            let sendingData: Buffer;    //要发送的数据
             if (Array.isArray(data)) {
                 sendingData = _Buffer.concat([header, BaseSocket.serialize(data)]);
             } else if (isBuffer(data)) {
@@ -366,10 +367,10 @@ export abstract class BaseSocket extends Emitter {
                 else
                     throw new Error('要被发送的Buffer并不是BaseSocket.serialize()序列化产生的');
             } else {
-                throw new Error(`传入的数据类型存在问题，必须是数组或Buffer。实际类型：${Object.prototype.toString.call(data)}`);
+                throw new Error(`传入的数据类型存在问题，必须是数组或Buffer，而实际类型是：${Object.prototype.toString.call(data)}`);
             }
 
-            if(this._maxPayload !== undefined && sendingData.length > this._maxPayload){
+            if (this._maxPayload !== undefined && sendingData.length > this._maxPayload) {
                 throw new Error('发送的数据大小超过了限制');
             }
 
@@ -377,7 +378,7 @@ export abstract class BaseSocket extends Emitter {
                 data: sendingData,
                 messageID: msgID,
                 cancel: (err) => {  //还未发送之前才可以取消
-                    if (this._queue.values().next().value === control)  //位于队列第一个表示正在发送
+                    if (prior || this._queue.values().next().value === control)  //位于队列第一个表示正在发送
                         return false;
                     else {
                         this._queue.delete(msgID);
@@ -393,17 +394,18 @@ export abstract class BaseSocket extends Emitter {
                     }
                 },
                 ack: (err) => {
+                    const isFirst = this._queue.values().next().value === control;
                     this._queue.delete(msgID);
                     err ? reject(err) : resolve();
 
-                    if (this._queue.size > 0)   //如果队列中还有，则发送下一条
+                    if (isFirst && this._queue.size > 0)   //如果队列中还有，并且自己位于队列头部（主要针对prior的情况），则发送下一条
                         this._queue.values().next().value.send();
                 }
             };
 
             this._queue.set(msgID, control);    //添加到队列中
 
-            if (this._queue.size === 1) {   //如果只有刚刚设置的这一条
+            if (prior || this._queue.size === 1) {   //如果只有刚刚设置的这一条
                 control.send();
             }
         });
