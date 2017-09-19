@@ -424,7 +424,7 @@ export abstract class BaseSocket extends Emitter {
     protected _receiveData(data: Buffer) {
         try {
             const header = this._deserializeHeader(data);
-
+console.log(header)
             if (header.needACK)
                 this._sendInternal('ack', [header.messageID]).catch(err => this.emit('error', err));
 

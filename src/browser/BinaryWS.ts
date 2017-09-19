@@ -41,7 +41,7 @@ export class BinaryWS extends BaseSocket {
         (<WebSocket>(cf.socket)).onopen = () => this.emit('open');
         (<WebSocket>(cf.socket)).onclose = (ev) => this.emit('close', ev.code, ev.reason);
         (<WebSocket>(cf.socket)).onerror = (err) => { console.error(err), this.emit('error', new Error('连接错误')); }
-        (<WebSocket>(cf.socket)).onmessage = (e) => this._receiveData(e.data);
+        (<WebSocket>(cf.socket)).onmessage = (e) => this._receiveData(typedToBuffer(e.data));
 
         super('browser', cf);
     }
