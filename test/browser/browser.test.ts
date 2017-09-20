@@ -105,4 +105,36 @@ describe('数据收发测试', function () {
             Buffer.from('789')
         ], false).messageID).to.be(3);
     });
+
+    it.only('测试直接发送Buffer', function (done) {
+        let index = 0;  //接收的顺序
+
+        c_socket.on('message', (name, data) => {
+            index++;
+            switch (name) {
+                case 'server:1':
+                    expect(index).to.be(1);
+                    expect(Buffer.from('123').equals(data[0])).to.be.ok();
+                    break;
+
+                case 'server:2':
+                    expect(index).to.be(2);
+                    expect(Buffer.from('asd').equals(data[0])).to.be.ok();
+                    done();
+                    break;
+
+                default:
+                    done(new Error('接收到的消息有问题：' + name));
+                    break;
+            }
+        });
+
+        expect(c_socket.send('1', BWS.Socket.serialize([Buffer.from('123')])).messageID).to.be(0);
+
+        c_socket.send('2', Buffer.from('456'))    // 未经过BWS.Socket.serialize序列化的数据不能被发送
+            .then(() => { throw new Error('不可能执行到这') })
+            .catch(err => expect(err).to.be.a(Error));
+
+        c_socket.send('2', BWS.Socket.serialize([Buffer.from('asd')]), false);
+    });
 });
