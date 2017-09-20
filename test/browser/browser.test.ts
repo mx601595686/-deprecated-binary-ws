@@ -1,5 +1,7 @@
 import * as BWS from '../../bin/browser/index';
 
+// 这里的测试基本上都是照搬server.test.ts的内容
+
 describe('数据收发测试', function () {
 
     let c_socket: BWS.Socket;    //客户端接口
