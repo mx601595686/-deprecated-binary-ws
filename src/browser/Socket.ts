@@ -1,14 +1,11 @@
 const _Buffer: typeof Buffer = require('buffer/').Buffer;
-const toArraybuffer = require('to-arraybuffer');
+const bufferToArraybuffer = require('to-arraybuffer');
 const blobToBuffer = require('blob-to-buffer');
+const typedarrayToBuffer = require("typedarray-to-buffer");
 
 const isTypedBuffer = require('is-typedarray');
-const isBlob = (x: any) => {
-    return x instanceof Blob || Object.prototype.toString.call(x) === '[object Blob]';
-}
-const isArrayBuffer = (x: any) => {
-    return x instanceof ArrayBuffer || Object.prototype.toString.call(x) === '[object ArrayBuffer]';
-}
+const isBlob = require('is-blob');
+const isArrayBuffer = require('is-array-buffer');
 const isDataView = (x: any) => {
     return x instanceof DataView || Object.prototype.toString.call(x) === '[object DataView]';
 }
@@ -70,9 +67,9 @@ export class Socket extends BaseSocket {
         if (isBlob(data)) {
             return blobToBuffer(data);
         } else if (isArrayBuffer(data) || isTypedBuffer(data)) {
-            return _Buffer.from(data);
+            return typedarrayToBuffer(data);
         } else if (isDataView(data)) {
-            return _Buffer.from((<DataView>data).buffer);
+            return typedarrayToBuffer((<DataView>data).buffer);
         } else {
             return data;
         }
@@ -80,7 +77,7 @@ export class Socket extends BaseSocket {
 
     protected _sendData(data: Buffer): Promise<void> {
         return new Promise((resolve, reject) => {
-            this.socket.send(toArraybuffer(data));  //不可以直接发送buffer
+            this.socket.send(bufferToArraybuffer(data));  //不可以直接发送buffer
 
             const check = (interval: number) => {
                 setTimeout(() => {

@@ -51,6 +51,9 @@ describe('数据收发测试', function () {
                     expect(data[6]).to.be(undefined);
                     expect(data[7]).to.be.eql({ a: 123 });
                     expect(data[8]).to.be.eql([1, 2, 3]);
+                    expect(Buffer.from((new ArrayBuffer(10))).equals(data[9])).to.be.ok();
+                    expect(Buffer.from((new Uint32Array(10)).fill(1)).equals(data[9])).to.be.ok();
+                    expect(Buffer.from('123').equals(data[9])).to.be.ok();
                     expect(Buffer.from('123').equals(data[9])).to.be.ok();
                     break;
 
@@ -84,15 +87,7 @@ describe('数据收发测试', function () {
 
         expect(c_socket.send('1').messageID).to.be(0);
 
-        expect(c_socket.send('2', [0,
-            1.1,
-            '2',
-            true,
-            false,
-            null,
-            undefined,
-            { a: 123 },
-            [1, 2, 3],
+        expect(c_socket.send('2', [0, 1.1, '2', true, false, null, undefined, { a: 123 }, [1, 2, 3],
             (new ArrayBuffer(10)),
             (new Uint32Array(10)).fill(1),
             (new DataView(new ArrayBuffer(10))),
@@ -100,6 +95,11 @@ describe('数据收发测试', function () {
         ]).messageID).to.be(1);
 
         expect(c_socket.send('3', undefined, false).messageID).to.be(2);
-        expect(c_socket.send('4', [1, 2.1, '3', false, true, undefined, null, { a: 456 }, [4, 5, 6], Buffer.from('789')], false).messageID).to.be(3);
+        expect(c_socket.send('4', [1, 2.1, '3', false, true, undefined, null, { a: 456 }, [4, 5, 6],
+            (new ArrayBuffer(10)),
+            (new Uint32Array(10)).fill(1),
+            (new DataView(new ArrayBuffer(10))),
+            Buffer.from('789')
+        ], false).messageID).to.be(3);
     });
 });
