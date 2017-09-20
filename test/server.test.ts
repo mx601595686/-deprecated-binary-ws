@@ -691,7 +691,6 @@ describe('测试Server Socket', function () {
                 c_socket.send('3', undefined, false);
 
                 await c_socket.send('4', [1, 2.1, '3', false, true, undefined, null, { a: 456 }, [4, 5, 6], Buffer.from('789')], false, true);
-                expect(c_socket.bufferedAmount).to.not.be(0);
             })();
         });
 
@@ -759,7 +758,6 @@ describe('测试Server Socket', function () {
                 expect(c_socket.cancel(m3.messageID)).to.be.ok();
 
                 const m4 = await c_socket.send('4', [1, 2.1, '3', false, true, undefined, null, { a: 456 }, [4, 5, 6], Buffer.from('789')], false, true);
-                expect(c_socket.bufferedAmount).to.not.be(0);
             })();
         });
     });
@@ -932,12 +930,16 @@ describe('测试Server Socket', function () {
             });
 
             it('设置了maxPayload', function (done) {
-                s_socket.on('message', () => done(new Error('不可能执行到这里，代码逻辑存在错误')));
-                s_socket.on('error', () => done(new Error('不可能执行到这里，代码逻辑存在错误')));
+                (async () => {
+                    s_socket.on('message', () => done(new Error('不可能执行到这里，代码逻辑存在错误')));
+                    s_socket.on('error', () => done(new Error('不可能执行到这里，代码逻辑存在错误')));
 
-                c_socket.send('1', [Buffer.alloc(1000)])
-                    .then(() => { done(new Error('不可能执行到这里，代码逻辑存在错误')) })
-                    .catch(err => { expect(err).to.be.a(Error); done(); });
+                    c_socket.send('1', [Buffer.alloc(1000)])
+                        .then(() => { done(new Error('不可能执行到这里，代码逻辑存在错误')) })
+                        .catch(err => { expect(err).to.be.a(Error); done(); });
+
+                    expect(c_socket.readyState).to.be(BWS.ReadyState.OPEN);
+                })();
             });
         });
     });
