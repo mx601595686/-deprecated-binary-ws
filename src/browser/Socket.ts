@@ -52,12 +52,12 @@ export class Socket extends BaseSocket {
     /**
      * 浏览器版除了可以直接发送Buffer之外还可以直接发送ArrayBuffer、TypedBuffer、DataView、Blob
      */
-    send(messageName: string, data?: any[] | Buffer, needACK: boolean = true) {
+    send(messageName: string, data?: any[] | Buffer, needACK?: boolean, prior?: boolean) {
         if (Array.isArray(data)) {
             data = data.map(item => this._transformType(item));
         }
 
-        return super.send(messageName, data, needACK);
+        return super.send(messageName, data, needACK, prior);
     }
 
     // 转换成满足发送要求的类型
