@@ -27,7 +27,7 @@ describe('数据收发测试', function () {
         expect(c_socket.platform).to.be('browser');
     });
 
-    it.only('测试收发消息', function (done) {
+    it('测试收发消息', function (done) {
         let index = 0;  //接收的顺序
 
         c_socket.on('message', (name, data) => {
@@ -51,10 +51,10 @@ describe('数据收发测试', function () {
                     expect(data[6]).to.be(undefined);
                     expect(data[7]).to.be.eql({ a: 123 });
                     expect(data[8]).to.be.eql([1, 2, 3]);
-                    expect(Buffer.from((new ArrayBuffer(10))).equals(data[9])).to.be.ok();
-                    expect(Buffer.from((new Uint32Array(10)).fill(1)).equals(data[9])).to.be.ok();
-                    expect(Buffer.from('123').equals(data[9])).to.be.ok();
-                    expect(Buffer.from('123').equals(data[9])).to.be.ok();
+                    expect(Buffer.from(new ArrayBuffer(10)).equals(data[9])).to.be.ok();
+                    expect(Buffer.from((new Uint32Array(10)).fill(1).buffer).equals(data[10])).to.be.ok();
+                    expect(Buffer.from(new ArrayBuffer(10)).equals(data[11])).to.be.ok();
+                    expect(Buffer.from('123').equals(data[12])).to.be.ok();
                     break;
 
                 case 'server:3':
@@ -75,7 +75,10 @@ describe('数据收发测试', function () {
                     expect(data[6]).to.be(null);
                     expect(data[7]).to.be.eql({ a: 456 });
                     expect(data[8]).to.be.eql([4, 5, 6]);
-                    expect(Buffer.from('789').equals(data[9])).to.be.ok();
+                    expect(Buffer.from(new ArrayBuffer(10)).equals(data[9])).to.be.ok();
+                    expect(Buffer.from((new Uint32Array(10)).fill(1).buffer).equals(data[10])).to.be.ok();
+                    expect(Buffer.from(new ArrayBuffer(10)).equals(data[11])).to.be.ok();
+                    expect(Buffer.from('789').equals(data[12])).to.be.ok();
                     done();
                     break;
 
