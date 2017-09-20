@@ -943,7 +943,7 @@ describe('测试Server Socket', function () {
     });
 });
 
-describe.only('压力测试', function () {
+describe('压力测试', function () {
     let server: BWS.Server;
 
     let c_socket1: BWS.Socket;    //客户端接口1
@@ -1010,7 +1010,7 @@ describe.only('压力测试', function () {
             expect(data[8]).to.be.eql([index1]);
             expect(Buffer.from(index1.toString()).equals(data[9])).to.be.ok();
             index1++;
-            //console.log(`[${(new Date()).toLocaleTimeString()}]`, 'index1', index1);
+            console.log(`[${(new Date()).toLocaleTimeString()}]`, 'index1', index1);
         });
 
         c_socket2.on('message', function (name, data) {
@@ -1026,10 +1026,12 @@ describe.only('压力测试', function () {
             expect(data[8]).to.be.eql([index2]);
             expect(Buffer.from(index2.toString()).equals(data[9])).to.be.ok();
             index2++;
-            //console.log(`[${(new Date()).toLocaleTimeString()}]`, 'index2', index2);
+            console.log(`[${(new Date()).toLocaleTimeString()}]`, 'index2', index2);
 
             if (index2 === 1000)
-                done();
+                setTimeout(() => {
+                    done();
+                }, 1000);
         });
 
         for (var index = 0; index < 1000; index++) {

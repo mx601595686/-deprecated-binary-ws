@@ -30,7 +30,7 @@ export interface BaseSocketConfig {
      */
     needDeserialize?: boolean;
     /**
-     * 限制单条消息的最大大小（byte）。
+     * 限制单条消息的最大大小（byte）。（这个只限制发送，但不限制接受）
      * 注意：这个必须与服务器一致。如果大于则会导致连接直接被断开。
      * 注意：一条消息头部还会占据一定大小
      */
