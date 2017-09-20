@@ -4,13 +4,15 @@ import * as path from 'path';
 import * as BWS from '../../';
 import opener = require('opener');
 import * as webpack from 'webpack';
-import webpackConfig from './webpack.config';
+import memoryFS = require('memory-fs');
+const webpackConfig = require('./webpack.config.js');
 
 function log(...args: any[]) {
     console.log(`[${(new Date).toLocaleTimeString()}]  `, ...args);
 }
-
+const mfs = new memoryFS();
 const compiler: webpack.Compiler = webpack(webpackConfig);
+compiler.outputFileSystem = mfs;
 
 const server = http.createServer((req, res) => {
     let url = req.url || '';
@@ -25,7 +27,7 @@ const server = http.createServer((req, res) => {
                 res.statusCode = 500;
                 res.end();
             } else {
-                const content = fs.readFileSync(path.resolve(__dirname, "./bin/index.js"));
+                const content = mfs.readFileSync('/index.js');
                 res.end(content);
             }
         });

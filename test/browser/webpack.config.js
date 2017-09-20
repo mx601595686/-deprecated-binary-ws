@@ -6,15 +6,20 @@ module.exports = {
         index: path.resolve(__dirname, './browser.test.ts')
     },
     output: {
-        filename: '[name].js',
-        path: path.resolve(__dirname, './bin')
+        filename: 'index.js',
+        path: '/'
     },
     devtool: 'inline-source-map',
     module: {
         rules: [
             {
-                test: /\.ts?$/,
-                use: 'ts-loader',
+                test: /.ts?$/,
+                use: 'ts-loader?' + JSON.stringify({
+                    compilerOptions: {
+                        declaration: false,
+                        allowJs: true
+                    }
+                }),
                 exclude: /node_modules/
             }
         ]

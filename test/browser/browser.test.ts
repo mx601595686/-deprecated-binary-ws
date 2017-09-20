@@ -1,4 +1,4 @@
-import * as BWS from '../../src/browser/index';
+import * as BWS from '../../bin/browser/index';
 const Buffer = require('buffer/').Buffer;
 
 describe('数据收发测试', function () {
