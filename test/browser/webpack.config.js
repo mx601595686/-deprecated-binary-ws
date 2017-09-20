@@ -17,7 +17,8 @@ module.exports = {
                 use: 'ts-loader?' + JSON.stringify({
                     compilerOptions: {
                         declaration: false,
-                        allowJs: true
+                        allowJs: true,
+                        target: "es2017"
                     }
                 }),
                 exclude: /node_modules/

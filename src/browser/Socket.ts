@@ -5,7 +5,6 @@ const isTypedBuffer = require('is-typedarray');
 
 const blobToBuffer = require('blob-to-buffer');
 const typedToBuffer = require('typedarray-to-buffer');
-const toArrayBuffer = require('to-arraybuffer');
 
 import { BaseSocketConfig } from './../common/BaseSocketConfig';
 import { BaseSocket } from "../common/BaseSocket";
@@ -74,7 +73,7 @@ export class Socket extends BaseSocket {
 
     protected _sendData(data: Buffer): Promise<void> {
         return new Promise((resolve, reject) => {
-            this.socket.send(toArrayBuffer(data));
+            this.socket.send(data);  //websocket 可以直接发送buffer
 
             const check = (interval: number) => {
                 setTimeout(() => {
@@ -86,7 +85,7 @@ export class Socket extends BaseSocket {
                 }, interval);
             }
 
-            check(10);
+            check(1);
         });
     }
 
