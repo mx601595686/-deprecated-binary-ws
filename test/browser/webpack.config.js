@@ -1,5 +1,5 @@
-import * as webpack from 'webpack';
-import * as path from 'path';
+const webpack = require('webpack');
+const path = require('path');
 
 module.exports = {
     entry: {
