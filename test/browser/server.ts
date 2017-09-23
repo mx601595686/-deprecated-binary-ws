@@ -21,7 +21,7 @@ const server = http.createServer((req, res) => {
     if (url === '/') {
         res.writeHead(301, { 'Location': '/test/browser/index.html' });
         res.end();
-    } else if (url.endsWith('index.test.ts')) {
+    } else if (url.endsWith('browser.test.ts')) {
         compiler.run((err, stats) => {
             if (stats.hasErrors()) {
                 log(stats.toString());
