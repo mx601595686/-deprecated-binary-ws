@@ -461,7 +461,7 @@ export abstract class BaseSocket extends Emitter {
     }
 
     /**
-     * 取消发送。如果某条消息还没有被取消则可以被取消。取消成功返回true，失败false
+     * 取消发送。如果某条消息还没有被发送则可以被取消。取消成功返回true，失败false
      * 
      * @param {number} messageID 要取消发送消息的messageID
      * @param {Error} [err] 传递一个error，指示本次发送属于失败
