@@ -10,6 +10,7 @@ export const enum DataType {
     boolean,
     null,
     undefined,
+    Array,
     Object,
     Buffer
 }

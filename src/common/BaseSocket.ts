@@ -1,6 +1,6 @@
 import * as Emitter from 'component-emitter';
 import * as WS from 'ws';
-const _Buffer: typeof Buffer = Buffer ? Buffer : require('buffer/').Buffer;  // 确保浏览器下也能使用Buffer
+const _Buffer: typeof Buffer = Buffer !== undefined ? Buffer : require('buffer/').Buffer;  // 确保浏览器下也能使用Buffer
 const isBuffer = require('is-buffer');
 
 import { ReadyState } from "./ReadyState";
@@ -14,114 +14,67 @@ import { QueueData } from './QueueData';
 export abstract class BaseSocket extends Emitter {
 
     /**
-     * _messageID 的ID号，id从0开始。每发一条消息，该id加1
-     * 
-     * @private
-     * @memberof BaseSocket
+     * 序列化标记，标记一个Buffer是BaseSocket.serialize序列化的结果
      */
-    private _messageID = 0;
-
-    private readonly _needDeserialize: boolean;
-
-    private readonly _maxPayload: number | undefined;
+    static readonly _serializeMark = _Buffer.from('+bws`');
 
     /**
-     * 等待发送消息的队列。key：messageID。
-     */
-    private readonly _queue: Map<number, QueueData> = new Map();
-
-    /**
-     * 保存被包装的socket对象
-     * 
-     * @type {(WebSocket|WS)}
-     * @memberof BaseSocket
-     */
-    readonly socket: WebSocket | WS;
-
-    /**
-     * WebSocket server 的URL地址   
-     * 注意：如果是Server生成的Socket，则url为空字符串
-     * 
-     * @type {string}
-     * @memberof BaseSocket
-     */
-    readonly url: string;
-
-    /**
-     * 当前接口运行所处的平台
-     * 
-     * @type {("browser" | "node")}
-     * @memberof BaseSocket
-     */
-    readonly platform: "browser" | "node";
-
-    /**
-     * 连接的当前状态
-     * 
-     * @readonly
-     * @abstract
-     * @type {ReadyState}
-     * @memberof BaseSocket
-     */
-    get readyState(): ReadyState {
-        return this.socket.readyState;
-    }
-
-    /**
-     * 在缓冲队列中等待发送的数据字节数
-     * 
-     * @readonly
-     * @abstract
-     * @type {number}
-     * @memberof BaseSocket
-     */
-    get bufferedAmount(): number {
-        let size = 0;
-
-        for (let item of this._queue.values()) {
-            size += item.data.length;
-        }
-
-        return size;
-    }
-
-    /**
-     * @param {("browser" | "node")} platform 指示该接口所处的平台
-     * @param {BaseSocketConfig} configs 配置
-     * @memberof BaseSocket
-     */
-    constructor(platform: "browser" | "node", configs: BaseSocketConfig) {
-        super();
-
-        this.url = configs.url;
-        this._needDeserialize = configs.needDeserialize === undefined ? true : configs.needDeserialize;
-        this._maxPayload = configs.maxPayload;
-        this.platform = platform;
-
-        if (configs.socket === undefined) {
-            throw new Error('传入的socket不可以为空');
-        } else {
-            this.socket = configs.socket;
-        }
-
-        this.on('close', () => {    //如果断开，终止所有还未发送的消息
-            for (let item of [...this._queue.values()].reverse()) { //从后向前取消
-                const result = item.cancel(new Error('连接中断'));
-                if (result === false)
-                    item.ack(new Error('连接中断'));    //取消正在发送的
-            }
-        });
-    }
-
-    /**
-     * 对要发送的数据进行序列化。注意只有位于数组根下的boolean、string、number、void、Buffer才会进行二进制序列化，对象会被JSON.stringify    
+     * 对要发送的数据进行序列化。
      * 数据格式： 元素类型 -> [元素长度] -> 元素内容
      * 
      * @static
      * @memberof BaseSocket
      */
-    static serialize(data: any[]): Buffer & { _serialized: boolean } {
-        const bufferItems: Buffer[] = [];
+    static serialize(data: any[]): Buffer {
+        const bufferItems: Buffer[] = [BaseSocket._serializeMark];
+
+        for (const item of data) switch (Object.prototype.toString.call(item)) {
+            case '[object Number]': {
+                const type = _Buffer.alloc(1);
+                const content = _Buffer.alloc(8);
+
+                type.writeUInt8(DataType.number, 0);
+                content.writeDoubleBE(item, 0);
+
+                bufferItems.push(type, content);
+                break;
+            }
+            case '[object String]': {
+                const type = _Buffer.alloc(1);
+                const content = _Buffer.from(item);
+                const contentLength = _Buffer.alloc(8);
+
+                type.writeUInt8(DataType.string, 0);
+                contentLength.writeDoubleBE(content.length, 0);
+
+                bufferItems.push(type, contentLength, content);
+                break;
+            }
+            case '[object Boolean]': {
+                const type = _Buffer.alloc(1);
+                const content = _Buffer.alloc(1);
+
+                type.writeUInt8(DataType.boolean, 0);
+                content.writeUInt8(item ? 1 : 0, 0);
+
+                bufferItems.push(type, content);
+                break;
+            }
+            case '[object Null]': {
+                const type = _Buffer.alloc(1);
+                type.writeUInt8(DataType.null, 0);
+
+                bufferItems.push(type);
+                break;
+            }
+            case '[object Undefined]': {
+                const type = _Buffer.alloc(1);
+                type.writeUInt8(DataType.undefined, 0);
+
+                bufferItems.push(type);
+                break;
+            }
+        }
 
         for (let item of data) {
             switch (typeof item) {
@@ -178,6 +131,15 @@ export abstract class BaseSocket extends Emitter {
                         contentLength.writeDoubleBE(content.length, 0);
 
                         bufferItems.push(type, contentLength, content);
+                    } else if (Array.isArray(item)) {
+                        const type = _Buffer.alloc(1);
+                        const content = BaseSocket.serialize(item);
+                        const contentLength = _Buffer.alloc(8);
+
+                        type.writeUInt8(DataType.Array, 0);
+                        contentLength.writeDoubleBE(content.length, 0);
+
+                        bufferItems.push(type, contentLength, content);
                     } else {
                         const type = _Buffer.alloc(1);
                         const content = _Buffer.from(JSON.stringify(item));
@@ -192,9 +154,7 @@ export abstract class BaseSocket extends Emitter {
             }
         }
 
-        const result: any = _Buffer.concat(bufferItems);
-        result._serialized = true;  //标记这份数据是被序列化过了的
-        return result;
+        return _Buffer.concat(bufferItems);
     }
 
     /**
@@ -263,6 +223,93 @@ export abstract class BaseSocket extends Emitter {
         }
 
         return result;
+    }
+
+    /**
+     * _messageID 的ID号，id从0开始。每发一条消息，该id加1
+     */
+    private _messageID = 0;
+
+    private readonly _needDeserialize: boolean;
+
+    private readonly _maxPayload: number | undefined;
+
+    /**
+     * 等待发送消息的队列。key：messageID。
+     */
+    private readonly _queue: Map<number, QueueData> = new Map();
+
+    /**
+     * 保存被包装的socket对象
+     * 
+     * @type {(WebSocket|WS)}
+     * @memberof BaseSocket
+     */
+    readonly socket: WebSocket | WS;
+
+    /**
+     * WebSocket server 的URL地址   
+     * 注意：如果是Server生成的Socket，则url为空字符串
+     * 
+     * @type {string}
+     * @memberof BaseSocket
+     */
+    readonly url: string;
+
+    /**
+     * 连接的当前状态
+     * 
+     * @readonly
+     * @abstract
+     * @type {ReadyState}
+     * @memberof BaseSocket
+     */
+    get readyState(): ReadyState {
+        return this.socket.readyState;
+    }
+
+    /**
+     * 在缓冲队列中等待发送的数据字节数
+     * 
+     * @readonly
+     * @abstract
+     * @type {number}
+     * @memberof BaseSocket
+     */
+    get bufferedAmount(): number {
+        let size = 0;
+
+        for (let item of this._queue.values()) {
+            size += item.data.length;
+        }
+
+        return size;
+    }
+
+    /**
+     * @param {BaseSocketConfig} configs 配置
+     * @memberof BaseSocket
+     */
+    constructor(configs: BaseSocketConfig) {
+        super();
+
+        this.url = configs.url;
+        this._needDeserialize = configs.needDeserialize === undefined ? true : configs.needDeserialize;
+        this._maxPayload = configs.maxPayload === undefined ? 1024 * 1024 * 100 : configs.maxPayload;
+
+        if (configs.socket === undefined) {
+            throw new Error('传入的socket不可以为空');
+        } else {
+            this.socket = configs.socket;
+        }
+
+        this.on('close', () => {    //如果断开，终止所有还未发送的消息
+            for (let item of [...this._queue.values()].reverse()) { //从后向前取消
+                const result = item.cancel(new Error('连接中断'));
+                if (result === false)
+                    item.ack(new Error('连接中断'));    //取消正在发送的
+            }
+        });
     }
 
     /**
@@ -464,7 +511,7 @@ export abstract class BaseSocket extends Emitter {
      * 取消发送。如果某条消息还没有被发送则可以被取消。取消成功返回true，失败false
      * 
      * @param {number} messageID 要取消发送消息的messageID
-     * @param {Error} [err] 传递一个error，指示本次发送属于失败
+     * @param {Error} [err] 传递一个error，指示本次发送失败的原因
      * @returns {boolean} 取消成功返回true，失败false
      * @memberof BaseSocket
      */
@@ -487,34 +534,28 @@ export abstract class BaseSocket extends Emitter {
      */
     abstract close(): void;
 
-    on(event: 'error', cb: (err: Error) => void): this
+    on(event: 'error', listener: (err: Error) => void): this
     /**
      * 当收到消息
      */
-    on(event: 'message', cb: (messageName: string, data: any[] | Buffer) => void): this
+    on(event: 'message', listener: (messageName: string, data: any[] | Buffer) => void): this
     /**
      * 当连接建立
      */
-    on(event: 'open', cb: () => void): this
+    on(event: 'open', listener: () => void): this
     /**
      * 断开连接
      */
-    on(event: 'close', cb: (code: number, reason: string) => void): this
+    on(event: 'close', listener: (code: number, reason: string) => void): this
     on(event: string, listener: Function): this {
         super.on(event, listener);
         return this;
     }
 
-    once(event: 'error', cb: (err: Error) => void): this
-    /**
-     * 当收到消息
-     */
-    once(event: 'message', cb: (messageName: string, data: any[] | Buffer) => void): this
-    /**
-     * 当连接建立
-     */
-    once(event: 'open', cb: () => void): this
-    once(event: 'close', cb: (code: number, reason: string) => void): this
+    once(event: 'error', listener: (err: Error) => void): this
+    once(event: 'message', listener: (messageName: string, data: any[] | Buffer) => void): this
+    once(event: 'open', listener: () => void): this
+    once(event: 'close', listener: (code: number, reason: string) => void): this
     once(event: string, listener: Function): this {
         super.once(event, listener);
         return this;

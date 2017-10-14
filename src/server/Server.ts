@@ -63,7 +63,8 @@ export class Server extends Emitter {
             host: '0.0.0.0',
             port: 8080,
             needDeserialize: true,
-            verifyClient: (info, cb) => {
+            maxPayload: 1024 * 1024 * 100,
+            verifyClient: (info, cb) => {   //建立连接前验证
                 this.verifyClient(info.req, info.origin, info.secure).then((result => {
                     if (typeof result === 'boolean') {
                         cb(result);
@@ -141,31 +142,31 @@ export class Server extends Emitter {
         server.close();     //ws不会吧绑定的server关掉，所以这里再次关闭一下
     }
 
-    on(event: 'error', cb: (err: Error) => void): this
+    on(event: 'error', listener: (err: Error) => void): this
     /**
      * 当服务器开始监听
      */
-    on(event: 'listening', cb: () => void): this
+    on(event: 'listening', listener: () => void): this
     /**
      * 当有新的客户端与服务器建立起连接
      */
-    on(event: 'connection', cb: (socket: Socket) => void): this
-    on(event: 'close', cb: (err: Error) => void): this
+    on(event: 'connection', listener: (socket: Socket) => void): this
+    on(event: 'close', listener: (err: Error) => void): this
     on(event: string, listener: Function): this {
         super.on(event, listener);
         return this;
     }
 
-    once(event: 'error', cb: (err: Error) => void): this
+    once(event: 'error', listener: (err: Error) => void): this
     /**
      * 当服务器开始监听
      */
-    once(event: 'listening', cb: () => void): this
+    once(event: 'listening', listener: () => void): this
     /**
      * 当有新的客户端与服务器建立起连接
      */
-    once(event: 'connection', cb: (socket: Socket) => void): this
-    once(event: 'close', cb: (err: Error) => void): this
+    once(event: 'connection', listener: (socket: Socket) => void): this
+    once(event: 'close', listener: (err: Error) => void): this
     once(event: string, listener: Function): this {
         super.once(event, listener);
         return this;
