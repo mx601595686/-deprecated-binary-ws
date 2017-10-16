@@ -6,19 +6,13 @@ import { BaseSocket } from "../common/BaseSocket";
 export declare class Socket extends BaseSocket {
     /**
      * 每新建一个接口+1
-     *
-     * @private
-     * @static
-     * @memberof Socket
      */
     private static _id_Number;
     /**
      * 当前接口的id
-     *
-     * @memberof Socket
      */
     readonly id: number;
-    readonly socket: WS;
+    readonly _socket: WS;
     /**
      * @param {string} url 服务器地址
      */

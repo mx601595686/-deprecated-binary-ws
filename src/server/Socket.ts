@@ -7,21 +7,15 @@ export class Socket extends BaseSocket {
 
     /**
      * 每新建一个接口+1
-     * 
-     * @private
-     * @static
-     * @memberof Socket
      */
     private static _id_Number = 0;
 
     /**
      * 当前接口的id
-     * 
-     * @memberof Socket
      */
     readonly id: number;
 
-    readonly socket: WS;
+    readonly _socket: WS;
 
     /**
      * @param {string} url 服务器地址
@@ -47,23 +41,23 @@ export class Socket extends BaseSocket {
 
         super(cf);
 
-        this.socket.on('open', this.emit.bind(this, 'open'));
-        this.socket.on('close', this.emit.bind(this, 'close'));
-        this.socket.on('error', this.emit.bind(this, 'error'));
-        this.socket.on('message', (data: Buffer) => this._receiveData(data));
+        this._socket.on('open', this.emit.bind(this, 'open'));
+        this._socket.on('close', this.emit.bind(this, 'close'));
+        this._socket.on('error', this.emit.bind(this, 'error'));
+        this._socket.on('message', (data: Buffer) => this._receiveData(data));
 
         this.id = Socket._id_Number++;
     }
 
     protected _sendData(data: Buffer): Promise<void> {
         return new Promise((resolve, reject) => {
-            this.socket.send(data, { binary: true }, (err) => {
+            this._socket.send(data, { binary: true }, (err) => {
                 err ? reject(err) : resolve();
             });
         });
     }
 
     close(): void {
-        this.socket.close();
+        this._socket.close();
     }
 }
