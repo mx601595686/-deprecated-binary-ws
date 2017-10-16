@@ -1,4 +1,5 @@
 import expect = require('expect.js');
+import { serialize } from 'object2buffer';
 import * as BWS from '../';
 import * as http from 'http';
 
@@ -177,7 +178,6 @@ describe('测试Server', function () {
             s.on('open', function () {
                 setTimeout(() => {
                     expect(server.clients.size).to.be(1);
-                    expect(server.clients.values().next().value.platform).be('node');
                     done();
                 }, 1000);
             });
@@ -189,7 +189,6 @@ describe('测试Server', function () {
             s.on('open', function () {
                 setTimeout(() => {
                     expect(server.clients.size).to.be(2);
-                    expect(server.clients.values().next().value.platform).be('node');
                     done();
                 }, 1000);
             });
@@ -201,7 +200,6 @@ describe('测试Server', function () {
             s.on('open', function () {
                 setTimeout(() => {
                     expect(server.clients.size).to.be(3);
-                    expect(server.clients.values().next().value.platform).be('node');
                     done();
                 }, 1000);
             });
@@ -254,7 +252,6 @@ describe('测试Server', function () {
             socket.on('open', function () {
                 setTimeout(() => {
                     expect(server.clients.size).to.be(1);
-                    expect(server.clients.values().next().value.platform).be('node');
                     done();
                 }, 1000);
             });
@@ -294,21 +291,18 @@ describe('测试Server', function () {
             socket.on('open', function () {
                 setTimeout(() => {
                     expect(server.clients.size).to.be(1);
-                    expect(server.clients.values().next().value.platform).be('node');
                     done();
                 }, 1000);
             });
         });
 
-        it('强制发送错误数据促使server断开连接', function (done) {
+        it('发送错误数据促使server断开连接', function (done) {
             let serverSocketError = false;  //服务器端server是否出现错误
             server.clients.values().next().value.on('error', () => serverSocketError = true);
 
             socket.on('close', () => { expect(serverSocketError).to.be.ok(); done(); });
 
-            const testData: any = Buffer.from('123');
-            testData._serialized = true;
-            socket.send('test', testData);
+            socket.send('test', Buffer.from('123'));
         });
     });
 
@@ -319,7 +313,15 @@ describe('测试Server', function () {
         before(function (done) {
             server = new BWS.Server({ needDeserialize: false });
             server.on('error', err => { throw err });
-            server.on('listening', done);
+            server.on('listening', function () {
+                socket = new BWS.Socket('ws://localhost:8080');
+                socket.on('open', function () {
+                    setTimeout(() => {
+                        expect(server.clients.size).to.be(1);
+                        done();
+                    }, 1000);
+                });
+            });
         });
 
         after(function (done) {
@@ -327,26 +329,24 @@ describe('测试Server', function () {
             server.close();
         });
 
-        beforeEach(function name(done) {
-            socket = new BWS.Socket('ws://localhost:8080');
-            socket.on('open', function () {
-                setTimeout(() => {
-                    expect(server.clients.size).to.be(1);
-                    expect(server.clients.values().next().value.platform).be('node');
-                    done();
-                }, 1000);
-            });
-        });
-
         it('检查收到的数据', function (done) {
             const sendArray = [0, 1.1, '2', true, false, null, undefined, { a: 123 }, [1, 2, 3], Buffer.from('123')];
-            const sendingData = BWS.Socket.serialize(sendArray);
-            server.clients.values().next().value.on('message', (name, data: Buffer) => {
+            const sendingData = serialize(sendArray);
+            server.clients.values().next().value.once('message', (name, data: Buffer) => {
                 expect(name).to.be('test');
                 expect(sendingData.equals(data)).to.be.ok();
                 done();
             });
             socket.send('test', sendArray);
+        });
+
+        it('检查收到的数据2', function (done) {
+            server.clients.values().next().value.once('message', (name, data: Buffer) => {
+                expect(name).to.be.eql(['test2', 123]);
+                expect(Buffer.from('123').equals(data)).to.be.ok();
+                done();
+            });
+            socket.send(['test2', 123], Buffer.from('123'));
         });
     });
 });
@@ -396,8 +396,6 @@ describe('测试Server Socket', function () {
             expect(c_socket.readyState).to.be(BWS.ReadyState.OPEN);
             expect(s_socket.url).to.be('');
             expect(c_socket.url).to.be('ws://localhost:8080');
-            expect(s_socket.platform).to.be('node');
-            expect(c_socket.platform).to.be('node');
         });
 
         it('测试顺序收发消息', function (done) {
@@ -532,42 +530,6 @@ describe('测试Server Socket', function () {
                 expect(c_socket.bufferedAmount).to.not.be(0);
 
                 await c_socket.send('4', [1, 2.1, '3', false, true, undefined, null, { a: 456 }, [4, 5, 6], Buffer.from('789')], false);
-                expect(c_socket.bufferedAmount).to.be(0);
-            })();
-        });
-
-        it('测试直接发送Buffer', function (done) {
-            (async () => {//存在未序列化buffer的情况
-                let index = 0;  //接收的顺序
-
-                s_socket.on('message', (name, data) => {
-                    index++;
-                    switch (name) {
-                        case '1':
-                            expect(index).to.be(1);
-                            expect(Buffer.from('123').equals(data[0])).to.be.ok();
-                            break;
-
-                        case '2':
-                            expect(index).to.be(2);
-                            expect(Buffer.from('asd').equals(data[0])).to.be.ok();
-                            done();
-                            break;
-
-                        default:
-                            done(new Error('接收到的消息有问题：' + name));
-                            break;
-                    }
-                });
-
-                expect(c_socket.send('1', BWS.Socket.serialize([Buffer.from('123')])).messageID).to.be(0);
-                expect(c_socket.bufferedAmount).to.not.be(0);
-
-                await c_socket.send('2', Buffer.from('456'))    // 未经过BWS.Socket.serialize序列化的数据不能被发送
-                    .then(() => { throw new Error('不可能执行到这') })
-                    .catch(err => expect(err).to.be.a(Error));
-
-                await c_socket.send('2', BWS.Socket.serialize([Buffer.from('asd')]), false);
                 expect(c_socket.bufferedAmount).to.be(0);
             })();
         });

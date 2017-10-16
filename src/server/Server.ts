@@ -9,9 +9,6 @@ export class Server extends Emitter {
 
     /**
      * 被包装的websocket对象
-     * 
-     * @type {WS.Server}
-     * @memberof Server
      */
     readonly ws: WS.Server;
 
@@ -22,38 +19,32 @@ export class Server extends Emitter {
 
     /**
      * 创建websocket服务器。
-     * @memberof Server
      */
     constructor()
     /**
      * 创建websocket服务器。
      * @param {string} host 监听的主机地址
-     * @memberof Server
      */
     constructor(host: string)
     /**
      * 创建websocket服务器。
      * @param {string} port 监听的端口
-     * @memberof Server
      */
     constructor(port: number)
     /**
      * 创建websocket服务器。
      * @param {string} host 监听的主机地址
      * @param {number} port 监听的端口
-     * @memberof Server
      */
     constructor(host: string, port: number)
     /**
      * 创建websocket服务器。
      * @param {(http.Server | https.Server)} server 绑定到指定的http服务器之上
-     * @memberof Server
      */
     constructor(server: http.Server | https.Server)
     /**
      * 创建websocket服务器。
      * @param {ServerConfig} options 服务器配置
-     * @memberof Server
      */
     constructor(options: ServerConfig)
     constructor(...args: any[]) {
@@ -63,7 +54,8 @@ export class Server extends Emitter {
             host: '0.0.0.0',
             port: 8080,
             needDeserialize: true,
-            verifyClient: (info, cb) => {
+            maxPayload: 1024 * 1024 * 100,
+            verifyClient: (info, cb) => {   //建立连接前验证
                 this.verifyClient(info.req, info.origin, info.secure).then((result => {
                     if (typeof result === 'boolean') {
                         cb(result);
@@ -96,9 +88,8 @@ export class Server extends Emitter {
         this.ws.once('listening', this.emit.bind(this, 'listening'));
         (<any>this.ws)._server.once('close', this.emit.bind(this, 'close'));  //ws内部会把创建或绑定的http server 保存到_server中
         this.ws.on('connection', (client) => {
-            const socket = new Socket({ url: '', socket: client, needDeserialize: config.needDeserialize });
+            const socket = new Socket({ url: '', socket: client, needDeserialize: config.needDeserialize, maxPayload: config.maxPayload });
             this.clients.set(socket.id, socket);
-            this.emit('connection', socket);
 
             socket.once('close', () => {
                 this.clients.delete(socket.id);
@@ -107,6 +98,8 @@ export class Server extends Emitter {
             socket.once('error', () => {    //接口如果出现异常则关闭
                 socket.close();
             });
+
+            this.emit('connection', socket);
         });
     }
 
@@ -123,7 +116,6 @@ export class Server extends Emitter {
      * @param {boolean} secure 'true' if req.connection.authorized or req.connection.encrypted is set.
      * @param {http.IncomingMessage} req The client HTTP GET request.
      * @returns {Promise<boolean | { res: boolean, code?: number, message?: string }>} 
-     * @memberof Server
      */
     verifyClient(req: http.IncomingMessage, origin: string, secure: boolean): Promise<boolean | { res: boolean, code?: number, message?: string }> {
         return Promise.resolve(true);
@@ -131,9 +123,6 @@ export class Server extends Emitter {
 
     /**
      * 关闭服务器，并断开所有的客户端连接
-     * 
-     * @returns {void} 
-     * @memberof Server
      */
     close() {
         const server = (<any>this.ws)._server;
@@ -141,31 +130,25 @@ export class Server extends Emitter {
         server.close();     //ws不会吧绑定的server关掉，所以这里再次关闭一下
     }
 
-    on(event: 'error', cb: (err: Error) => void): this
+    on(event: 'error', listener: (err: Error) => void): this
     /**
      * 当服务器开始监听
      */
-    on(event: 'listening', cb: () => void): this
+    on(event: 'listening', listener: () => void): this
     /**
      * 当有新的客户端与服务器建立起连接
      */
-    on(event: 'connection', cb: (socket: Socket) => void): this
-    on(event: 'close', cb: (err: Error) => void): this
+    on(event: 'connection', listener: (socket: Socket) => void): this
+    on(event: 'close', listener: (err: Error) => void): this
     on(event: string, listener: Function): this {
         super.on(event, listener);
         return this;
     }
 
-    once(event: 'error', cb: (err: Error) => void): this
-    /**
-     * 当服务器开始监听
-     */
-    once(event: 'listening', cb: () => void): this
-    /**
-     * 当有新的客户端与服务器建立起连接
-     */
-    once(event: 'connection', cb: (socket: Socket) => void): this
-    once(event: 'close', cb: (err: Error) => void): this
+    once(event: 'error', listener: (err: Error) => void): this
+    once(event: 'listening', listener: () => void): this
+    once(event: 'connection', listener: (socket: Socket) => void): this
+    once(event: 'close', listener: (err: Error) => void): this
     once(event: string, listener: Function): this {
         super.once(event, listener);
         return this;

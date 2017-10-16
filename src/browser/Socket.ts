@@ -1,22 +1,11 @@
-const _Buffer: typeof Buffer = require('buffer/').Buffer;
-const bufferToArraybuffer = require('to-arraybuffer');
-const blobToBuffer = require('blob-to-buffer');
-const typedarrayToBuffer = require("typedarray-to-buffer");
-
-const isTypedBuffer = require('is-typedarray');
-const isBlob = require('is-blob');
-const isArrayBuffer = require('is-array-buffer');
-const isDataView = (x: any) => {
-    return x instanceof DataView || Object.prototype.toString.call(x) === '[object DataView]';
-}
+import { NodeBuffer, nodeBufferToArraybuffer } from 'object2buffer';
 
 import { BaseSocketConfig } from './../common/BaseSocketConfig';
 import { BaseSocket } from "../common/BaseSocket";
-import { ReadyState } from "../common/ReadyState";
 
 export class Socket extends BaseSocket {
 
-    readonly socket: WebSocket;
+    readonly _socket: WebSocket;
 
     /**
      * @param {string} [url] 服务器地址，如果不指定，默认连接的是当前域名下的根
@@ -40,46 +29,22 @@ export class Socket extends BaseSocket {
         if (!(cf.socket instanceof WebSocket))
             cf.socket = new WebSocket(cf.url);
 
-        (<WebSocket>(cf.socket)).binaryType = 'arraybuffer';
-        (<WebSocket>(cf.socket)).onopen = () => this.emit('open');
-        (<WebSocket>(cf.socket)).onclose = (ev) => this.emit('close', ev.code, ev.reason);
-        (<WebSocket>(cf.socket)).onerror = (err) => { console.error(err), this.emit('error', new Error('连接错误')); }
-        (<WebSocket>(cf.socket)).onmessage = (e) => this._receiveData(_Buffer.from(e.data));
+        super(cf);
 
-        super('browser', cf);
-    }
-
-    /**
-     * 浏览器版除了可以直接发送Buffer之外还可以直接发送ArrayBuffer、TypedBuffer、DataView、Blob
-     */
-    send(messageName: string, data?: any[] | Buffer, needACK?: boolean, prior?: boolean) {
-        if (Array.isArray(data)) {
-            data = data.map(item => this._transformType(item));
-        }
-
-        return super.send(messageName, data, needACK, prior);
-    }
-
-    // 转换成满足发送要求的类型
-    private _transformType(data: any): Buffer {
-        if (isBlob(data)) {
-            return blobToBuffer(data);
-        } else if (isArrayBuffer(data) || isTypedBuffer(data)) {
-            return typedarrayToBuffer(data);
-        } else if (isDataView(data)) {
-            return typedarrayToBuffer((<DataView>data).buffer);
-        } else {
-            return data;
-        }
+        this._socket.binaryType = 'arraybuffer';
+        this._socket.onopen = () => this.emit('open');
+        this._socket.onclose = (ev) => this.emit('close', ev.code, ev.reason);
+        this._socket.onerror = (err) => { console.error(err), this.emit('error', new Error('连接错误')); }
+        this._socket.onmessage = (e) => this._receiveData(NodeBuffer.from(e.data));
     }
 
     protected _sendData(data: Buffer): Promise<void> {
         return new Promise((resolve, reject) => {
-            this.socket.send(bufferToArraybuffer(data));  //不可以直接发送buffer
+            this._socket.send(nodeBufferToArraybuffer(data));  //不可以直接发送buffer
 
             const check = (interval: number) => {
                 setTimeout(() => {
-                    if (this.socket.bufferedAmount === 0) {
+                    if (this._socket.bufferedAmount === 0) {
                         resolve();
                     } else {
                         check(interval >= 2000 ? 2000 : interval * 2); //最慢2秒检查一次
@@ -92,6 +57,6 @@ export class Socket extends BaseSocket {
     }
 
     close() {
-        this.socket.close();
+        this._socket.close();
     }
 }

@@ -23,14 +23,11 @@ export interface ServerConfig {
      */
     path?: string;
     /**
-     * 接受的单条消息的最大大小（byte）。
+     * 接收的单条消息的最大大小（byte）默认100MB。
      */
     maxPayload?: number;
     /**
      * 是否对收到的消息进行反序列化。默认true。
-     *
-     * @type {boolean}
-     * @memberof BaseSocketConfig
      */
     needDeserialize?: boolean;
 }

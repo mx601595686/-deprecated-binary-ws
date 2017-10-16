@@ -26,7 +26,6 @@ describe('数据收发测试', function () {
         expect(c_socket.bufferedAmount).to.be(0);
         expect(c_socket.readyState).to.be(BWS.ReadyState.OPEN);
         expect(c_socket.url).to.be(`ws${location.protocol === 'https:' ? 's' : ''}://${location.host}`);
-        expect(c_socket.platform).to.be('browser');
     });
 
     it('测试顺序收发消息', function (done) {
@@ -189,42 +188,6 @@ describe('数据收发测试', function () {
                 (new Uint32Array(10)).fill(1),
                 (new DataView(new ArrayBuffer(10))),
                 Buffer.from('789')], false);
-            expect(c_socket.bufferedAmount).to.be(0);
-        })();
-    });
-
-    it('测试直接发送Buffer', function (done) {
-        (async () => {//存在未序列化buffer的情况
-            let index = 0;  //接收的顺序
-
-            c_socket.on('message', (name, data) => {
-                index++;
-                switch (name) {
-                    case '1':
-                        expect(index).to.be(1);
-                        expect(Buffer.from('123').equals(data[0])).to.be.ok();
-                        break;
-
-                    case '2':
-                        expect(index).to.be(2);
-                        expect(Buffer.from('asd').equals(data[0])).to.be.ok();
-                        done();
-                        break;
-
-                    default:
-                        done(new Error('接收到的消息有问题：' + name));
-                        break;
-                }
-            });
-
-            expect(c_socket.send('1', BWS.Socket.serialize([Buffer.from('123')])).messageID).to.be(0);
-            expect(c_socket.bufferedAmount).to.not.be(0);
-
-            await c_socket.send('2', Buffer.from('456'))    // 未经过BWS.Socket.serialize序列化的数据不能被发送
-                .then(() => { throw new Error('不可能执行到这') })
-                .catch(err => expect(err).to.be.a(Error));
-
-            await c_socket.send('2', BWS.Socket.serialize([Buffer.from('asd')]), false);
             expect(c_socket.bufferedAmount).to.be(0);
         })();
     });

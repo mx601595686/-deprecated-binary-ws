@@ -19,33 +19,21 @@ export interface ServerSocketConfig extends BaseSocketConfig {
 
     /**
      * The certificate key.
-     * 
-     * @type {CertMeta}
-     * @memberof ServerSocketConfig
      */
     cert?: CertMeta;
 
     /**
      * The private key.
-     * 
-     * @type {CertMeta}
-     * @memberof ServerSocketConfig
      */
     key?: CertMeta;
 
     /**
      * The private key, certificate, and CA certs.
-     * 
-     * @type {(string | Buffer)}
-     * @memberof ServerSocketConfig
      */
     pfx?: string | Buffer;
 
     /**
      *  Trusted certificates.
-     * 
-     * @type {CertMeta}
-     * @memberof ServerSocketConfig
      */
     ca?: CertMeta;
 }
