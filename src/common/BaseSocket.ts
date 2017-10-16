@@ -101,7 +101,7 @@ export abstract class BaseSocket extends Emitter {
      */
     private _deserializeHeader(data: Buffer) {
         const headerLength = data.readDoubleBE(0);
-        const header = deserialize(data.slice(8, headerLength));
+        const header = deserialize(data.slice(8, headerLength + 8));
 
         return {
             isInternal: header[0] as boolean,
@@ -145,9 +145,8 @@ export abstract class BaseSocket extends Emitter {
             else
                 sendingData = NodeBuffer.concat([header, data]);
 
-            if (sendingData.length >= this._maxPayload) {
+            if (sendingData.length >= this._maxPayload)
                 throw new Error('发送的数据大小超过了限制');
-            }
 
             const control: QueueData = {
                 data: sendingData,
