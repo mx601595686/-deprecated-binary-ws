@@ -2,7 +2,6 @@ import { NodeBuffer, nodeBufferToArraybuffer } from 'object2buffer';
 
 import { BaseSocketConfig } from './../common/BaseSocketConfig';
 import { BaseSocket } from "../common/BaseSocket";
-import { ReadyState } from "../common/ReadyState";
 
 export class Socket extends BaseSocket {
 
@@ -30,13 +29,13 @@ export class Socket extends BaseSocket {
         if (!(cf.socket instanceof WebSocket))
             cf.socket = new WebSocket(cf.url);
 
-        (<WebSocket>(cf.socket)).binaryType = 'arraybuffer';
-        (<WebSocket>(cf.socket)).onopen = () => this.emit('open');
-        (<WebSocket>(cf.socket)).onclose = (ev) => this.emit('close', ev.code, ev.reason);
-        (<WebSocket>(cf.socket)).onerror = (err) => { console.error(err), this.emit('error', new Error('连接错误')); }
-        (<WebSocket>(cf.socket)).onmessage = (e) => this._receiveData(NodeBuffer.from(e.data));
-
         super(cf);
+
+        this._socket.binaryType = 'arraybuffer';
+        this._socket.onopen = () => this.emit('open');
+        this._socket.onclose = (ev) => this.emit('close', ev.code, ev.reason);
+        this._socket.onerror = (err) => { console.error(err), this.emit('error', new Error('连接错误')); }
+        this._socket.onmessage = (e) => this._receiveData(NodeBuffer.from(e.data));
     }
 
     protected _sendData(data: Buffer): Promise<void> {

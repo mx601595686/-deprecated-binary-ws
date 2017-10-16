@@ -116,7 +116,7 @@ export abstract class BaseSocket extends Emitter {
      * 发送数据。发送失败直接抛出异常
      * 
      * @param {dataType} messageName 消息的名称(标题)
-     * @param {dataType[]} [data=[]] 要发送的数据。如果是传入的是数组，则数据将使用object2buffer进行序列化。如果传入的是Buffer，则将直接被发送。(注意：传入的Buffer如果不是object2buffer序列化产生的，则需要接收方设置needDeserialize = false)
+     * @param {dataType[] | Buffer} [data=[]] 要发送的数据。如果是传入的是数组，则数据将使用object2buffer进行序列化。如果传入的是Buffer，则将直接被发送。(注意：传入的Buffer如果不是object2buffer序列化产生的，则需要接收方设置needDeserialize = false)
      * @param {boolean} [needACK=true] 发出的这条消息是否需要确认对方是否已经收到
      * @param {boolean} [prior=false] 是否直接发送（在缓冲队列中排队。默认false）
      * @returns {(Promise<void> & { messageID: number })} messageID
