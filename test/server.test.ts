@@ -907,7 +907,7 @@ describe('测试Server Socket', function () {
     });
 });
 
-describe.only('压力测试', function () {
+describe('压力测试', function () {
     let server: BWS.Server;
 
     let c_socket1: BWS.Socket;    //客户端接口1
