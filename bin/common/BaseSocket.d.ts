@@ -112,7 +112,7 @@ export declare abstract class BaseSocket extends Emitter {
     /**
      * 当收到消息
      */
-    on(event: 'message', listener: (messageName: string, data: any[] | Buffer) => void): this;
+    on(event: 'message', listener: (messageName: dataType, data: any[] | Buffer) => void): this;
     /**
      * 当连接建立
      */
@@ -122,7 +122,7 @@ export declare abstract class BaseSocket extends Emitter {
      */
     on(event: 'close', listener: (code: number, reason: string) => void): this;
     once(event: 'error', listener: (err: Error) => void): this;
-    once(event: 'message', listener: (messageName: string, data: any[] | Buffer) => void): this;
+    once(event: 'message', listener: (messageName: dataType, data: any[] | Buffer) => void): this;
     once(event: 'open', listener: () => void): this;
     once(event: 'close', listener: (code: number, reason: string) => void): this;
 }
