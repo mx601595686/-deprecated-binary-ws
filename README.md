@@ -1,6 +1,3 @@
-# Deprecated
-使用[crossbar.io](https://crossbar.io/)和[autobahn-js](https://github.com/crossbario/autobahn-js)来替代
-
 # binary-ws
 通过 [object2buffer](https://github.com/mx601595686/object2buffer)将对象转换为buffer。
 
@@ -19,3 +16,6 @@
 * [浏览器 Socket API](./bin/browser/Socket.d.ts)
 
 
+# 推荐的替代品
+> [crossbar.io](https://crossbar.io/)   
+> [autobahn-js](https://github.com/crossbario/autobahn-js)
