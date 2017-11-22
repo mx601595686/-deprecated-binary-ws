@@ -1,11 +1,11 @@
 {
     "name": "binary-ws",
-    "version": "0.2.1",
-    "description": "Simply serialize object into binary and use websocket transfer between the browser and the server",
+    "version": "1.1.0",
+    "description": "简单地包装了一下浏览器与nodejs的websocket，使之具有更好的使用体验",
     "main": "./bin/server/index.js",
     "types": "./bin/server/index.d.ts",
     "scripts": {
-        "test": "mocha --compilers ts:ts-node/register,tsx:ts-node/register ./test/server.test.ts",
+        "test": "mocha --compilers ts:ts-node/register,tsx:ts-node/register ./test/server/server.test.ts",
         "compile": "gulp compile"
     },
     "repository": {
@@ -48,8 +48,6 @@
         "@types/component-emitter": "^1.2.6",
         "@types/ws": "^3.0.2",
         "component-emitter": "^1.2.1",
-        "log-formatter": "^0.1.5",
-        "object2buffer": "^0.1.0",
         "ws": "^3.1.0"
     }
 }

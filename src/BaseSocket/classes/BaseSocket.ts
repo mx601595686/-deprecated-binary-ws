@@ -1,6 +1,5 @@
 import * as Emitter from 'component-emitter';
 import * as WS from 'ws';
-import log from 'log-formatter';
 
 import { ReadyState } from "../interfaces/ReadyState";
 import { BaseSocketConfig } from '../interfaces/BaseSocketConfig';

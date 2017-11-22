@@ -10,6 +10,7 @@ import { BaseSocketConfig } from '../../BaseSocket/interfaces/BaseSocketConfig';
 export class Server extends Emitter {
 
     private readonly _http: http.Server | https.Server;
+
     private readonly _ws: WS.Server;
 
     /**
@@ -28,17 +29,14 @@ export class Server extends Emitter {
         this._http = server;
         this._http.once('close', this.emit.bind(this, 'close'));
 
-        const sendingContentSize = configs.sendingContentSize == null ? 0 : configs.sendingContentSize;
-        const filePieceSize = configs.filePieceSize == null ? 1024 * 1024 : configs.filePieceSize;
-
         this._ws = new WS.Server({
             server,
-            maxPayload: sendingContentSize === 0 ? undefined : sendingContentSize + filePieceSize + 1024 * 1024, //多加1MB是因为内部content还会占一部分空间
+            maxPayload: configs.maxPayload == null || configs.maxPayload <= 0 ? undefined : configs.maxPayload + 1024, //多加1kb是为内部信息一部分空间
             path: configs.url && (new URL(configs.url)).pathname,
             verifyClient: (info, cb) => {   //连接验证
                 this.verifyClient(info.req, info.origin, info.secure)
                     .then((result => typeof result === 'boolean' ? cb(result) : cb(result.res, result.code, result.message)))
-                    .catch(() => cb(false));
+                    .catch((err) => { cb(false); console.error('binary-ws 客户端连接验证出现异常', err); });
             }
         });
 
@@ -46,7 +44,7 @@ export class Server extends Emitter {
         this._ws.once('listening', this.emit.bind(this, 'listening'));
 
         this._ws.on('connection', client => {
-            const socket = new Socket(client, configs);
+            const socket = new Socket(configs, client);
             this.clients.set(socket.id, socket);
 
             socket.once('close', () => this.clients.delete(socket.id));
