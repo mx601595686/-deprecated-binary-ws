@@ -47,7 +47,9 @@
     "dependencies": {
         "@types/component-emitter": "^1.2.6",
         "@types/ws": "^3.0.2",
+        "buffer": "^5.0.8",
         "component-emitter": "^1.2.1",
+        "to-arraybuffer": "^1.0.1",
         "ws": "^3.1.0"
     }
 }
