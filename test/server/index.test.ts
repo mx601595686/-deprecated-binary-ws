@@ -518,7 +518,7 @@ describe('压力测试', function () {
         c_socket.close();
     });
 
-    it('双向收发数据1000次', function (done) {
+    it.only('双向收发数据1000次，碰到5则取消发送', function (done) {
         this.timeout(100000);
 
         let index1 = 0;
@@ -528,24 +528,36 @@ describe('压力测试', function () {
             expect(title).to.be(index1.toString());
             expect(data.toString()).to.be(index1.toString());
             index1++;
-            console.log(`[${(new Date()).toLocaleTimeString()}]`, 'index1', index1);
+            if (index1 % 5 === 0) index1++;
+
+            console.log(`[${(new Date()).toLocaleTimeString()}]`, 'index1', title);
         });
 
         c_socket.on('message', function (title, data) {
             expect(title).to.be(index2.toString());
             expect(data.toString()).to.be(index2.toString());
-            index2++;
-            console.log(`[${(new Date()).toLocaleTimeString()}]`, 'index2', index2);
+            index2 ++;
+            if (index2 % 5 === 0) index2++;
 
-            if (index2 === 1000)
+            console.log(`[${(new Date()).toLocaleTimeString()}]`, 'index2', title);
+
+            if (index2 === 999)
                 setTimeout(() => {
                     done();
                 }, 1000);
         });
 
         for (var index = 0; index < 1000; index++) {
-            s_socket.send(index.toString(), Buffer.from(index.toString()));
-            c_socket.send(index.toString(), Buffer.from(index.toString()));
+            const m1 = s_socket.send(index.toString(), Buffer.from(index.toString()));
+            const m2 = c_socket.send(index.toString(), Buffer.from(index.toString()));
+            
+            m1.catch(()=>{});
+            m2.catch(()=>{});
+
+            if (index % 5 === 0) {
+                s_socket.cancel(m1.messageID);
+                c_socket.cancel(m2.messageID);
+            }
         }
     });
 });

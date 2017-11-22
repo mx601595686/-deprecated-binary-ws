@@ -104,16 +104,24 @@ describe('压力测试', function () {
             expect(title).to.be(index1.toString());
             expect(data.toString()).to.be(index1.toString());
             index1++;
-            console.log(`[${(new Date()).toLocaleTimeString()}]`, 'index1', index1);
+            if (index1 % 5 === 0) index1++;
 
-            if (index1 === 1000)
+            console.log(`[${(new Date()).toLocaleTimeString()}]`, 'index1', title);
+
+            if (index1 === 999)
                 setTimeout(() => {
                     done();
                 }, 1000);
         });
 
         for (var index = 0; index < 1000; index++) {
-            c_socket.send(index.toString(), Buffer.from(index.toString()));
+            const m2 = c_socket.send(index.toString(), Buffer.from(index.toString()));
+            
+            m2.catch(()=>{});
+
+            if (index % 5 === 0) {
+                c_socket.cancel(m2.messageID);
+            }
         }
     });
 });
