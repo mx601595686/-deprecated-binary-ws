@@ -100,7 +100,11 @@ export abstract class BaseSocket extends Emitter {
             if (this.maxPayload !== 0 && r_data.length > this.maxPayload)
                 throw new Error('发送的消息大小超出了限制');
 
+            let sent = false;   //是否已经执行send了
+
             const send = (err?: Error) => {
+                if (sent) return; else sent = true;
+
                 if (err != null) {
                     reject(err);
                     this._sendingQueue.delete(messageID);

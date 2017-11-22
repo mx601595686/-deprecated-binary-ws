@@ -3,10 +3,10 @@ import * as BWS from '../..';
 // 这里的测试基本上都是照搬server.test.ts的内容
 
 describe('数据收发测试', function () {
-    let c_socket: BWS.ServerSocket;    //客户端接口
+    let c_socket: BWS.BrowserSocket;    //客户端接口
 
     beforeEach(function (done) {    //创建连接
-        c_socket = new BWS.ServerSocket({ url: 'ws://localhost:8080' });
+        c_socket = new BWS.BrowserSocket();
         c_socket.on('error', (err) => { throw err });
         c_socket.on('open', () => {
             done();
@@ -85,10 +85,10 @@ describe('数据收发测试', function () {
 
 
 describe('压力测试', function () {
-    let c_socket: BWS.ServerSocket;    //客户端接口
+    let c_socket: BWS.BrowserSocket;    //客户端接口
 
     beforeEach(function (done) {    //创建连接
-        c_socket = new BWS.ServerSocket({ url: 'ws://localhost:8080' });
+        c_socket = new BWS.BrowserSocket();
         c_socket.on('error', (err) => { throw err });
         c_socket.on('open', () => {
             done();
