@@ -1,5 +1,5 @@
 # binary-ws
-通过 [object2buffer](https://github.com/mx601595686/object2buffer)将对象转换为buffer。
+包装了一下浏览器与nodejs的websocket，使之具有更好的使用体验。
 
 ### Server API
 

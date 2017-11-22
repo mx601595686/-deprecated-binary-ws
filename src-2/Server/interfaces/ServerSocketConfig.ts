@@ -1,5 +1,5 @@
-import { BaseSocketConfig } from './../common/BaseSocketConfig';
 import { CertMeta } from "ws";
+import { BaseSocketConfig } from "../../BaseSocket/interfaces/BaseSocketConfig";
 
 // 注意：这里面的参数都是供‘WS’使用的，BaseSocketConfig中定义的参数不要与WS使用的参数相互冲突了
 

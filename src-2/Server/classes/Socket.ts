@@ -1,19 +1,11 @@
 import * as WS from 'ws';
+import { BaseSocket } from '../../BaseSocket/classes/BaseSocket';
+import { ServerSocketConfig } from '../interfaces/ServerSocketConfig';
 
-import { ServerSocketConfig } from './ServerSocketConfig';
-import { BaseSocket } from "../common/BaseSocket";
 
 export class Socket extends BaseSocket {
 
-    /**
-     * 每新建一个接口+1
-     */
-    private static _id_Number = 0;
 
-    /**
-     * 当前接口的id
-     */
-    readonly id: number;
 
     readonly _socket: WS;
 
@@ -46,7 +38,7 @@ export class Socket extends BaseSocket {
         this._socket.on('error', this.emit.bind(this, 'error'));
         this._socket.on('message', (data: Buffer) => this._receiveData(data));
 
-        this.id = Socket._id_Number++;
+
     }
 
     protected _sendData(data: Buffer): Promise<void> {

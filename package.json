@@ -48,6 +48,7 @@
         "@types/component-emitter": "^1.2.6",
         "@types/ws": "^3.0.2",
         "component-emitter": "^1.2.1",
+        "log-formatter": "^0.1.5",
         "object2buffer": "^0.1.0",
         "ws": "^3.1.0"
     }
