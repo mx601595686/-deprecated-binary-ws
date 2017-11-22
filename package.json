@@ -2,8 +2,8 @@
     "name": "binary-ws",
     "version": "1.1.0",
     "description": "简单地包装了一下浏览器与nodejs的websocket，使之具有更好的使用体验",
-    "main": "./bin/server/index.js",
-    "types": "./bin/server/index.d.ts",
+    "main": "./bin/index.js",
+    "types": "./bin/index.d.ts",
     "scripts": {
         "test": "mocha --compilers ts:ts-node/register,tsx:ts-node/register ./test/server/server.test.ts",
         "compile": "gulp compile"

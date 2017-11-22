@@ -26,7 +26,7 @@
                 "--colors",
                 "--compilers",
                 "ts:ts-node/register,tsx:ts-node/register",
-                "${workspaceRoot}/test/server.test.ts"
+                "${workspaceRoot}/test/server/server.test.ts"
             ],
             "internalConsoleOptions": "openOnSessionStart"
         }

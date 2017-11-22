@@ -6,7 +6,7 @@
  */
 export declare enum ReadyState {
     /**
-     * 连接还没开启
+     * 正在连接
      */
     CONNECTING = 0,
     /**

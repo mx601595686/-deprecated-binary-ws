@@ -1,7 +1,7 @@
 /// <reference types="ws" />
 /// <reference types="node" />
-import { BaseSocketConfig } from './../common/BaseSocketConfig';
 import { CertMeta } from "ws";
+import { BaseSocketConfig } from "../../BaseSocket/interfaces/BaseSocketConfig";
 /**
  * 服务器端socket 接口构造函数参数。
  *

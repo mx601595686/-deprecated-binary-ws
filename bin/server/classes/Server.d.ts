@@ -1,50 +1,22 @@
-/// <reference types="ws" />
 /// <reference types="node" />
-import * as WS from 'ws';
 import * as Emitter from 'component-emitter';
 import * as http from 'http';
 import * as https from 'https';
-import { ServerConfig } from './ServerConfig';
 import { Socket } from './Socket';
+import { BaseSocketConfig } from '../../BaseSocket/interfaces/BaseSocketConfig';
 export declare class Server extends Emitter {
-    /**
-     * 被包装的websocket对象
-     */
-    readonly ws: WS.Server;
+    private readonly _http;
+    private readonly _ws;
     /**
      * 保存所有客户端连接。key是socket.id
      */
     readonly clients: Map<number, Socket>;
     /**
-     * 创建websocket服务器。
+     * 创建binary-ws Server。
+     * @param server 要绑定的http服务器
+     * @param configs 接口配置
      */
-    constructor();
-    /**
-     * 创建websocket服务器。
-     * @param {string} host 监听的主机地址
-     */
-    constructor(host: string);
-    /**
-     * 创建websocket服务器。
-     * @param {string} port 监听的端口
-     */
-    constructor(port: number);
-    /**
-     * 创建websocket服务器。
-     * @param {string} host 监听的主机地址
-     * @param {number} port 监听的端口
-     */
-    constructor(host: string, port: number);
-    /**
-     * 创建websocket服务器。
-     * @param {(http.Server | https.Server)} server 绑定到指定的http服务器之上
-     */
-    constructor(server: http.Server | https.Server);
-    /**
-     * 创建websocket服务器。
-     * @param {ServerConfig} options 服务器配置
-     */
-    constructor(options: ServerConfig);
+    constructor(server: http.Server | https.Server, configs: BaseSocketConfig);
     /**
      * 判断是否接受新的连接。
      * 返回true表示接受，返回false表示拒绝。也可以返回一个对象，提供更多信息。
@@ -54,18 +26,18 @@ export declare class Server extends Emitter {
      *      code {Number} When result is false this field determines the HTTP error status code to be sent to the client.
      *      name {String} When result is false this field determines the HTTP reason phrase.
      *
+     * @param {http.IncomingMessage} req The client HTTP GET request.
      * @param {string} origin The value in the Origin header indicated by the client.
      * @param {boolean} secure 'true' if req.connection.authorized or req.connection.encrypted is set.
-     * @param {http.IncomingMessage} req The client HTTP GET request.
      * @returns {Promise<boolean | { res: boolean, code?: number, message?: string }>}
      */
-    verifyClient(req: http.IncomingMessage, origin: string, secure: boolean): Promise<boolean | {
+    protected verifyClient(req: http.IncomingMessage, origin: string, secure: boolean): Promise<boolean | {
         res: boolean;
         code?: number;
         message?: string;
     }>;
     /**
-     * 关闭服务器，并断开所有的客户端连接
+     * 关闭服务器，并断开所有的客户端连接。（注意这个会将绑定的http server也关了）
      */
     close(): void;
     on(event: 'error', listener: (err: Error) => void): this;

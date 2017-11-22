@@ -64,16 +64,12 @@ export abstract class BaseSocket extends Emitter {
         this.id = BaseSocket._id_Number++;
         this._socket = socket;
         this.url = configs.url;
-        this.maxPayload = configs.maxPayload == null || configs.maxPayload <= 0 ? 0 : configs.maxPayload;
+        this.maxPayload = configs.maxPayload == null || configs.maxPayload <= 0 ? 0 : configs.maxPayload + 1024;
 
-        this.once('close', () => {
-            this.once('close', () => {    //如果断开，终止所有还未发送的消息。从后向前取消
-                for (let item of [...this._sendingQueue.values()].reverse())
-                    item.send(new Error('连接中断'));
-            });
+        this.once('close', () => {    //如果断开，终止所有还未发送的消息。从后向前取消
+            for (let item of [...this._sendingQueue.keys()].reverse())
+                this.cancel(item, new Error('连接中断'));
         });
-
-        
     }
 
     /**
@@ -100,6 +96,10 @@ export abstract class BaseSocket extends Emitter {
             b_title_length.writeUInt32BE(b_title.length, 0);
 
             const r_data = Buffer.concat([b_title_length, b_title, data]);
+
+            if (r_data.length > this.maxPayload)
+                throw new Error('发送的消息大小超出了限制');
+
             const send = (err?: Error) => {
                 if (err != null) {
                     reject(err);
