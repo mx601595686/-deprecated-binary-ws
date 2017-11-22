@@ -544,7 +544,6 @@ describe('压力测试', function () {
         });
 
         for (var index = 0; index < 1000; index++) {
-            const data = [index, index + 0.1, index.toString(), true, false, null, undefined, { a: index }, [index], Buffer.from(index.toString())];
             s_socket.send(index.toString(), Buffer.from(index.toString()));
             c_socket.send(index.toString(), Buffer.from(index.toString()));
         }
