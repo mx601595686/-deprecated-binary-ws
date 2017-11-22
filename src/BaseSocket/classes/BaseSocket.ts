@@ -3,10 +3,6 @@ import * as WS from 'ws';
 
 import { ReadyState } from "../interfaces/ReadyState";
 import { BaseSocketConfig } from '../interfaces/BaseSocketConfig';
-import { SendingQueue } from './SendingQueue';
-import { SendingData } from './SendingData';
-import { receivingQueue } from './receivingQueue';
-import { ReceivedData } from '../interfaces/ReceivedData';
 
 /**
  * websocket 接口的抽象类，定义了需要实现的基础功能
@@ -19,32 +15,28 @@ export abstract class BaseSocket extends Emitter {
     private static _id_Number = 0;
 
     /**
+     * _messageID 的ID号，id从0开始。每发一条消息，该id加1。
+     */
+    private _messageID = 0;
+
+    /**
+     * 消息的发送队列。如果要取消发送，可以向send中传递以error
+     */
+    private readonly _sendingQueue: Map<number, { size: number, send: (err?: Error) => void }> = new Map();
+
+    /**
      * 保存被包装的socket对象
      */
-    private readonly _socket: WebSocket | WS;
-
-    private readonly _sendingQueue: SendingQueue = new SendingQueue(this);
-
-    private readonly _receivingQueue: receivingQueue = new receivingQueue(this);
+    protected readonly _socket: WebSocket | WS;
 
     /**
      * 当前接口的id
      */
     readonly id: number;
 
-    /**
-     * _messageID 的ID号，id从0开始。每发一条消息，该id加1。（内部使用）
-     */
-    _messageID = 0;
-
     readonly url: string;
-    readonly needDeserialize: boolean;
-    readonly sendingContentSize: number;
-    readonly sendingFileSize: number;
-    readonly filePieceSize: number;
-    readonly receivingFilePieceTimeout: number;
-    readonly printSendingMessage: boolean = false;
-    readonly printReceivedMessage: boolean = false;
+
+    readonly maxPayload: number;
 
     /**
      * 连接的当前状态
@@ -53,64 +45,41 @@ export abstract class BaseSocket extends Emitter {
         return this._socket.readyState;
     }
 
+    /**
+     * 在缓冲队列中等待发送的数据大小
+     */
+    get bufferedAmount(): number {
+        let size = 0;
+
+        for (let item of this._sendingQueue.values()) {
+            size += item.size;
+        }
+
+        return size;
+    }
+
     constructor(socket: WebSocket | WS, configs: BaseSocketConfig) {
         super();
 
         this.id = BaseSocket._id_Number++;
-
         this._socket = socket;
-
         this.url = configs.url;
-        this.needDeserialize = configs.needDeserialize == null ? true : configs.needDeserialize;
-        this.sendingContentSize = configs.sendingContentSize == null ? 0 : configs.sendingContentSize;
-        this.sendingFileSize = configs.sendingFileSize == null ? 0 : configs.sendingFileSize;
-        this.filePieceSize = configs.filePieceSize == null ? 1024 * 1024 : configs.filePieceSize;
-        this.receivingFilePieceTimeout = configs.receivingFilePieceTimeout == null ? 10 * 60 * 1000 : configs.receivingFilePieceTimeout;
-        this.printSendingMessage = configs.printSendingMessage == null ? false : configs.printSendingMessage;
-        this.printReceivedMessage = configs.printReceivedMessage == null ? false : configs.printReceivedMessage;
+        this.maxPayload = configs.maxPayload == null || configs.maxPayload <= 0 ? 0 : configs.maxPayload;
 
-        if (this.printSendingMessage === true) {
-            const send: any = this.send;
-
-            this.send = function (...args: any[]) {
-                const sp = send(...args);
-
-                const result = sp.then(() => {
-                    log
-                        .location   //binary-ws
-                        .location.green // 发送成功 | 发送失败
-                        .text   //destination
-                        .content.yellow('binary-ws', '发送成功', args[0], args[1]);
-                }).catch((err: Error) => {
-                    log.error
-                        .location.white
-                        .location.red
-                        .text
-                        .text.round.red //error
-                        .content.yellow('binary-ws', '发送失败', args[0], err.message, args[1]);
-
-                    throw err;
-                });
-
-                result.messageID = sp.messageID;
-                return result;
-            } as any;
-        }
-
-        if (this.printReceivedMessage === true) {
-            this.on('message', function (data) {
-                log
-                    .location
-                    .location.blue
-                    .content.yellow('binary-ws', '接收成功',  data.content);
+        this.once('close', () => {
+            this.once('close', () => {    //如果断开，终止所有还未发送的消息。从后向前取消
+                for (let item of [...this._sendingQueue.values()].reverse())
+                    item.send(new Error('连接中断'));
             });
-        }
+        });
+
+        
     }
 
     /**
      * 需要子类覆写。用于发送数据
      */
-    abstract async _sendData(data: Buffer): Promise<void>;
+    protected abstract async _sendData(data: Buffer): Promise<void>;
 
     /**
      * 关闭接口。关闭之后会触发close事件
@@ -118,79 +87,73 @@ export abstract class BaseSocket extends Emitter {
     abstract close(): void;
 
     /**
-     * 发送数据。(返回的promise中包含该条消息的messageID)
-     * @param destination 目的地
-     * @param content 内容
-     * @param file 附带文件
-     * @param onUpdateSendingFilePercentage 发送文件进度回调，返回值0-1
+     * 发送消息。(返回的promise中包含该条消息的messageID)
+     * @param title 消息的标题
+     * @param data 携带的数据
      */
-    send(destination: string, content: string, file?: Buffer, onUpdateSendingFilePercentage?: (percentage: number) => void) {
-        const data = new SendingData(this, destination, content, file);
+    send(title: string, data: Buffer): Promise<void> & { messageID: number } {
+        const messageID = this._messageID++;
 
-        const prom: Promise<void> & { messageID: number } = new Promise((resolve, reject) => {
-            this._sendingQueue.addToSendingQueue({ data, resolve, reject, onUpdateSendingFilePercentage });
-        }) as any;
+        const result: any = new Promise((resolve, reject) => {
+            const b_title = Buffer.from(title);
+            const b_title_length = Buffer.alloc(4);
+            b_title_length.writeUInt32BE(b_title.length, 0);
 
-        prom.messageID = data.messageID;
-        return prom;
+            const r_data = Buffer.concat([b_title_length, b_title, data]);
+            const send = (err?: Error) => {
+                if (err != null) {
+                    reject(err);
+                    this._sendingQueue.delete(messageID);
+                } else {
+                    this._sendData(r_data).then(resolve as any).catch(reject).then(() => {
+                        this._sendingQueue.delete(messageID);
+                        if (this._sendingQueue.size > 0)
+                            this._sendingQueue.values().next().value.send();
+                    });
+                }
+            }
+
+            this._sendingQueue.set(messageID, { size: r_data.length, send });
+            if (this._sendingQueue.size === 1) send();  //如果没有消息排队就直接发送
+        });
+
+        result.messageID = messageID;
+        return result;
     }
 
     /**
      * 取消发送
      * @param messageID 要取消发送消息的messageID
-     * @param err 传递一个error，指示本次发送失败的原因
+     * @param err 传递一个error，指示取消的原因
      */
-    cancel(messageID: number, err?: Error) {
-        this._sendingQueue.cancel(messageID, err);
+    cancel(messageID: number, err: Error = new Error('发送取消')) {
+        const item = this._sendingQueue.get(messageID);
+        if (item != null) item.send(err);
     }
 
     /**
      * 解析接收到数据。子类接收到消息后需要触发这个方法
      * 
-     * @protected
-     * @param {Buffer} data 接收到数据
-     * @memberof BaseSocket
+     * @param data 接收到数据
      */
     protected _receiveData(data: Buffer) {
         try {
-            const header = this._deserializeHeader(data);
+            let offset = 0;
+            const title_length = data.readUInt32BE(0); offset += 4;
+            const title = data.slice(offset, offset += title_length).toString();
+            const r_data = data.slice(offset);
 
-            if (header.needACK)
-                this._sendInternal('ack', [header.messageID]).catch(err => this.emit('error', err));
-
-            if (header.isInternal) {    //如果接收到的是内部发来的消息
-                const body = deserialize(data.slice(header.headerLength));
-
-                switch (header.messageName) {
-                    case 'ack':
-                        const callback = this._queue.get(body[0] as number);
-                        callback && callback.ack();
-                        break;
-                }
-            } else {
-                const body = this._needDeserialize ? deserialize(data.slice(header.headerLength)) : data.slice(header.headerLength);
-                setTimeout(() => {  //避免被外层的try catch捕捉到
-                    this.emit('message', header.messageName, body);
-                }, 0);
-            }
+            this.emit('message', title, r_data);
         } catch (error) {
             this.emit('error', error);
         }
     }
 
-
-
-
-
     on(event: 'error', listener: (err: Error) => void): this
     /**
-     * 当收到消息，并且needDeserialize设置为true
+     * 当收到消息
      */
-    on(event: 'message', listener: (data: ReceivedData) => void): this
-    /**
-     * 当收到消息，并且needDeserialize设置为false，该事件会被触发，传递消息的目的地以及原始数据
-     */
-    on(event: 'raw-message', listener: (destination: string, data: Buffer) => void): this
+    on(event: 'message', listener: (title: string, data: Buffer) => void): this
     /**
      * 当连接建立
      */
@@ -205,8 +168,7 @@ export abstract class BaseSocket extends Emitter {
     }
 
     once(event: 'error', listener: (err: Error) => void): this
-    once(event: 'message', listener: (data: ReceivedData) => void): this
-    once(event: 'raw-message', listener: (destination: string, data: Buffer) => void): this
+    once(event: 'message', listener: (title: string, data: Buffer) => void): this
     once(event: 'open', listener: () => void): this
     once(event: 'close', listener: (code: number, reason: string) => void): this
     once(event: string, listener: Function): this {
