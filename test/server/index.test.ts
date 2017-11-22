@@ -222,4 +222,331 @@ describe('测试Server', function () {
     });
 });
 
+describe('测试ServerSocket', function () {
 
+    describe('数据收发测试', function () {
+        let server: BWS.Server;
+
+        let s_socket: BWS.ServerSocket;    //服务器端对应的接口
+        let c_socket: BWS.ServerSocket;    //客户端接口
+
+        before(function (done) {    // 打开服务器
+            const hs = http.createServer();
+            hs.listen(8080);
+            server = new BWS.Server(hs, { url: 'ws://localhost:8080' });
+            server.on('error', err => { throw err });
+            server.on('listening', done);
+        });
+
+        after(function (done) {
+            server.on('close', done);
+            server.close();
+        });
+
+        beforeEach(function (done) {    //创建连接
+            c_socket = new BWS.ServerSocket({ url: 'ws://localhost:8080' });
+            c_socket.on('error', (err) => { throw err });
+            c_socket.on('open', () => {
+                expect(server.clients.size).to.be(1);
+                s_socket = server.clients.values().next().value;
+                done();
+            });
+        });
+
+        afterEach(function (done) {
+            s_socket.on('close', () => {
+                (<any>s_socket) = undefined;
+                (<any>c_socket) = undefined;
+                done();
+            });
+            c_socket.close();
+        });
+
+        it('检查socket的属性是否正确', function () {
+            expect(s_socket.bufferedAmount).to.be(0);
+            expect(c_socket.bufferedAmount).to.be(0);
+            expect(s_socket.readyState).to.be(BWS.ReadyState.OPEN);
+            expect(c_socket.readyState).to.be(BWS.ReadyState.OPEN);
+            expect(s_socket.url).to.be('ws://localhost:8080');
+            expect(c_socket.url).to.be('ws://localhost:8080');
+        });
+
+        it('测试收发消息', function (done) {
+            (async () => {
+                let index = 0;  //接收的顺序
+
+                s_socket.on('message', (name, data) => {
+                    index++;
+                    switch (name) {
+                        case '1':
+                            expect(index).to.be(1);
+                            expect(data.length).to.be(0);
+                            break;
+
+                        case '2':
+                            expect(index).to.be(2);
+                            expect(Buffer.from('123').equals(data)).to.be.ok();
+                            done();
+                            break;
+
+                        default:
+                            done(new Error('接收到的消息名称有问题：' + name));
+                            break;
+                    }
+                });
+
+                await c_socket.send('1', Buffer.alloc(0));
+                expect(c_socket.bufferedAmount).to.be(0);
+
+                await c_socket.send('2', Buffer.from('123'));
+                expect(c_socket.bufferedAmount).to.be(0);
+            })();
+        });
+
+        it('测试取消发送', function (done) {
+            (async () => {
+                let index = 0;  //接收的顺序
+
+                s_socket.on('message', (name, data) => {
+                    index++;
+                    switch (name) {
+                        case '1':
+                            expect(index).to.be(1);
+                            expect(data.length).to.be(0);
+                            done();
+                            break;
+
+                        default:
+                            done(new Error('接收到的消息有问题：' + name));
+                            break;
+                    }
+                });
+
+                const m1 = c_socket.send('1', Buffer.alloc(0));
+                const m1_size = c_socket.bufferedAmount;
+
+                const m2 = c_socket.send('2', Buffer.from('123'));
+                m2.catch(() => { });
+
+                expect(c_socket.bufferedAmount).to.above(m1_size);
+                c_socket.cancel(m2.messageID);
+                expect(c_socket.bufferedAmount).to.be(m1_size);
+            })();
+        });
+    });
+
+    describe('连接中断测试', function () {
+        let server: BWS.Server;
+
+        let s_socket: BWS.ServerSocket;    //服务器端对应的接口
+        let c_socket: BWS.ServerSocket;    //客户端接口
+
+        before(function (done) {    // 打开服务器
+            const hs = http.createServer();
+            hs.listen(8080);
+            server = new BWS.Server(hs, { url: 'ws://localhost:8080' });
+            server.on('error', err => { throw err });
+            server.on('listening', done);
+        });
+
+        beforeEach(function (done) {    //创建连接
+            c_socket = new BWS.ServerSocket({ url: 'ws://localhost:8080' });
+            c_socket.on('error', (err) => { throw err });
+            c_socket.on('open', () => {
+                expect(server.clients.size).to.be(1);
+                s_socket = server.clients.values().next().value;
+                done();
+            });
+        });
+
+        it('测试断开连接取消发送', function (done) {
+            s_socket.on('message', (name, data) => {
+                done(new Error('1不可能执行到这里，代码逻辑存在错误'));
+            });
+
+            server.close();
+            c_socket.close();
+
+            let triggered = 0;
+
+            c_socket.send('1', Buffer.alloc(0))
+                .then(() => { done(new Error('2不可能执行到这里，代码逻辑存在错误')) })
+                .catch(err => { expect(err).to.be.a(Error); triggered++ });
+
+            c_socket.send('2', Buffer.alloc(0))
+                .then(() => { done(new Error('3不可能执行到这里，代码逻辑存在错误')) })
+                .catch(err => { expect(err).to.be.a(Error); triggered++ });
+
+            c_socket.send('3', Buffer.alloc(0))
+                .then(() => { done(new Error('4不可能执行到这里，代码逻辑存在错误')) })
+                .catch(err => { expect(err).to.be.a(Error); triggered++ });
+
+            expect(c_socket.bufferedAmount).to.not.be(0);
+
+            c_socket.on('close', () => {
+                setTimeout(() => {
+                    expect(triggered).to.be(3);
+                    done();
+                }, 1000);
+            });
+        });
+    });
+
+    describe('数据包大小限制测试', function () {
+        let server: BWS.Server;
+
+        before(function (done) {
+            const hs = http.createServer();
+            hs.listen(8080);
+            server = new BWS.Server(hs, { url: 'ws://localhost:8080', maxPayload: 100 });
+            server.on('error', err => { throw err });
+            server.on('listening', done);
+        });
+
+        after(function (done) {
+            server.on('close', done);
+            server.close();
+        });
+
+        describe('在限制范围之内', function () {
+            let s_socket: BWS.ServerSocket;    //服务器端对应的接口
+            let c_socket: BWS.ServerSocket;    //客户端接口
+
+            beforeEach(function (done) {    //创建连接
+                c_socket = new BWS.ServerSocket({ url: 'ws://localhost:8080' });
+                c_socket.on('error', (err) => { throw err });
+                c_socket.on('open', () => {
+                    expect(server.clients.size).to.be(1);
+                    s_socket = server.clients.values().next().value;
+                    done();
+                });
+            });
+
+            afterEach(function (done) {
+                s_socket.on('close', () => {
+                    (<any>s_socket) = undefined;
+                    (<any>c_socket) = undefined;
+                    done();
+                });
+                c_socket.close();
+            });
+
+            it('测试在限制范围之内', function (done) {
+                s_socket.on('message', (name, data) => {
+                    expect(name).to.be('1');
+                    expect(Buffer.alloc(10).fill(1).equals(data)).to.be.ok();
+                    done();
+                });
+                c_socket.send('1', Buffer.alloc(10).fill(1));
+            });
+        });
+
+        describe('超过限制的范围', function () {
+            let s_socket: BWS.ServerSocket;    //服务器端对应的接口
+            let c_socket: BWS.ServerSocket;    //客户端接口
+
+            beforeEach(function (done) {    //创建连接
+                c_socket = new BWS.ServerSocket({ url: 'ws://localhost:8080', maxPayload: 100 });
+                c_socket.on('error', (err) => { throw err });
+                c_socket.on('open', () => {
+                    expect(server.clients.size).to.be(1);
+                    s_socket = server.clients.values().next().value;
+                    done();
+                });
+            });
+
+            afterEach(function (done) {
+                s_socket.on('close', () => {
+                    (<any>s_socket) = undefined;
+                    (<any>c_socket) = undefined;
+                    done();
+                });
+                c_socket.close();
+            });
+
+            it('设置了maxPayload', function (done) {
+                (async () => {
+                    s_socket.on('message', () => done(new Error('不可能执行到这里，代码逻辑存在错误')));
+                    s_socket.on('error', () => done(new Error('不可能执行到这里，代码逻辑存在错误')));
+
+                    c_socket.send('1', Buffer.alloc(10000))
+                        .then(() => { done(new Error('不可能执行到这里，代码逻辑存在错误')) })
+                        .catch(err => { expect(err).to.be.a(Error); done(); });
+
+                    expect(c_socket.readyState).to.be(BWS.ReadyState.OPEN);
+                })();
+            });
+        });
+    });
+});
+
+describe('压力测试', function () {
+    let server: BWS.Server;
+
+    let s_socket: BWS.ServerSocket;    //服务器端对应的接口
+    let c_socket: BWS.ServerSocket;    //客户端接口
+
+    before(function (done) {    // 打开服务器
+        const hs = http.createServer();
+        hs.listen(8080);
+        server = new BWS.Server(hs, { url: 'ws://localhost:8080' });
+        server.on('error', err => { throw err });
+        server.on('listening', done);
+    });
+
+    after(function (done) {
+        server.on('close', done);
+        server.close();
+    });
+
+    beforeEach(function (done) {    //创建连接
+        c_socket = new BWS.ServerSocket({ url: 'ws://localhost:8080' });
+        c_socket.on('error', (err) => { throw err });
+        c_socket.on('open', () => {
+            expect(server.clients.size).to.be(1);
+            s_socket = server.clients.values().next().value;
+            done();
+        });
+    });
+
+    afterEach(function (done) {
+        s_socket.on('close', () => {
+            (<any>s_socket) = undefined;
+            (<any>c_socket) = undefined;
+            done();
+        });
+        c_socket.close();
+    });
+
+    it('双向收发数据1000次', function (done) {
+        this.timeout(100000);
+
+        let index1 = 0;
+        let index2 = 0;
+
+        s_socket.on('message', function (title, data) {
+            expect(title).to.be(index1.toString());
+            expect(data.toString()).to.be(index1.toString());
+            index1++;
+            console.log(`[${(new Date()).toLocaleTimeString()}]`, 'index1', index1);
+        });
+
+        c_socket.on('message', function (title, data) {
+            expect(title).to.be(index2.toString());
+            expect(data.toString()).to.be(index2.toString());
+            index2++;
+            console.log(`[${(new Date()).toLocaleTimeString()}]`, 'index2', index2);
+
+            if (index2 === 1000)
+                setTimeout(() => {
+                    done();
+                }, 1000);
+        });
+
+        for (var index = 0; index < 1000; index++) {
+            const data = [index, index + 0.1, index.toString(), true, false, null, undefined, { a: index }, [index], Buffer.from(index.toString())];
+            s_socket.send(index.toString(), Buffer.from(index.toString()));
+            c_socket.send(index.toString(), Buffer.from(index.toString()));
+        }
+    });
+});

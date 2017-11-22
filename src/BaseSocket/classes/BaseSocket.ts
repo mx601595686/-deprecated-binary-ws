@@ -97,7 +97,7 @@ export abstract class BaseSocket extends Emitter {
 
             const r_data = Buffer.concat([b_title_length, b_title, data]);
 
-            if (r_data.length > this.maxPayload)
+            if (this.maxPayload !== 0 && r_data.length > this.maxPayload)
                 throw new Error('发送的消息大小超出了限制');
 
             const send = (err?: Error) => {
@@ -105,8 +105,13 @@ export abstract class BaseSocket extends Emitter {
                     reject(err);
                     this._sendingQueue.delete(messageID);
                 } else {
-                    this._sendData(r_data).then(resolve as any).catch(reject).then(() => {
+                    this._sendData(r_data).then(() => {
                         this._sendingQueue.delete(messageID);
+                        resolve();
+                    }).catch((err) => {
+                        this._sendingQueue.delete(messageID);
+                        reject(err);
+                    }).then(() => {
                         if (this._sendingQueue.size > 0)
                             this._sendingQueue.values().next().value.send();
                     });
