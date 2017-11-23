@@ -21,7 +21,10 @@ module.exports = {
                         target: "es2017"
                     }
                 }),
-                exclude: /node_modules/
+                exclude: [
+                    /node_modules/,
+                    /src/
+                ]
             }
         ]
     },
