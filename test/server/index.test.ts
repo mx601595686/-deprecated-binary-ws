@@ -434,10 +434,10 @@ describe('测试ServerSocket', function () {
             it('测试在限制范围之内', function (done) {
                 s_socket.on('message', (name, data) => {
                     expect(name).to.be('1');
-                    expect(Buffer.alloc(10).fill(1).equals(data)).to.be.ok();
+                    expect(Buffer.alloc(99).fill(1).equals(data)).to.be.ok();
                     done();
                 });
-                c_socket.send('1', Buffer.alloc(10).fill(1));
+                c_socket.send('1', Buffer.alloc(99).fill(1));
             });
         });
 
@@ -469,7 +469,7 @@ describe('测试ServerSocket', function () {
                     s_socket.on('message', () => done(new Error('不可能执行到这里，代码逻辑存在错误')));
                     s_socket.on('error', () => done(new Error('不可能执行到这里，代码逻辑存在错误')));
 
-                    c_socket.send('1', Buffer.alloc(10000))
+                    c_socket.send('1', Buffer.alloc(100))
                         .then(() => { done(new Error('不可能执行到这里，代码逻辑存在错误')) })
                         .catch(err => { expect(err).to.be.a(Error); done(); });
 
@@ -518,7 +518,7 @@ describe('压力测试', function () {
         c_socket.close();
     });
 
-    it.only('双向收发数据1000次，碰到5则取消发送', function (done) {
+    it('双向收发数据1000次，碰到5则取消发送', function (done) {
         this.timeout(100000);
 
         let index1 = 0;

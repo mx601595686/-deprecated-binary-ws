@@ -64,7 +64,7 @@ export abstract class BaseSocket extends Emitter {
         this.id = BaseSocket._id_Number++;
         this._socket = socket;
         this.url = configs.url;
-        this.maxPayload = configs.maxPayload == null || configs.maxPayload <= 0 ? 0 : configs.maxPayload + 1024;
+        this.maxPayload = configs.maxPayload == null || configs.maxPayload <= 0 ? 0 : configs.maxPayload + 4;
 
         this.once('close', () => {    //如果断开，终止所有还未发送的消息。从后向前取消
             for (let item of [...this._sendingQueue.keys()].reverse())

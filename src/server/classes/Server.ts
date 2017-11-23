@@ -31,7 +31,7 @@ export class Server extends Emitter {
 
         this._ws = new WS.Server({
             server,
-            maxPayload: configs.maxPayload == null || configs.maxPayload <= 0 ? undefined : configs.maxPayload + 1024, //多加1kb是为内部信息一部分空间
+            maxPayload: configs.maxPayload == null || configs.maxPayload <= 0 ? undefined : configs.maxPayload + 4, //多加4是因为title长度还会占一部分控件
             path: configs.url && (new URL(configs.url)).pathname,
             verifyClient: (info, cb) => {   //连接验证
                 this.verifyClient(info.req, info.origin, info.secure)
