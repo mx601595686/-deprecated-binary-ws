@@ -1,7 +1,7 @@
 import { BaseSocket } from "../../BaseSocket/classes/BaseSocket";
 import { BaseSocketConfig } from "../../BaseSocket/interfaces/BaseSocketConfig";
 
-if (!require('is-node')) (window as any).Buffer = require('buffer/').Buffer;
+if (!require('is-node')) Buffer = require('buffer/').Buffer;
 const nodeBufferToArraybuffer = require('to-arraybuffer');
 
 export class Socket extends BaseSocket {

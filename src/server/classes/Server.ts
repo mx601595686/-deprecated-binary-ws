@@ -36,7 +36,7 @@ export class Server extends Emitter {
             verifyClient: (info, cb) => {   //连接验证
                 this.verifyClient(info.req, info.origin, info.secure)
                     .then((result => typeof result === 'boolean' ? cb(result) : cb(result.res, result.code, result.message)))
-                    .catch((err) => { cb(false); this.emit('error', err) });
+                    .catch((err) => { cb(false); this.emit('error', err); });
             }
         });
 

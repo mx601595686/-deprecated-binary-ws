@@ -105,7 +105,7 @@ export abstract class BaseSocket extends Emitter {
             const send = (err?: Error) => {
                 if (sent) return; else sent = true;
 
-                if (err != null) {
+                if (err !== undefined) {
                     reject(err);
                     this._sendingQueue.delete(messageID);
                 } else {
