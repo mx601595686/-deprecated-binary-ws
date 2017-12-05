@@ -1,5 +1,6 @@
 import { BaseSocket } from "../../BaseSocket/classes/BaseSocket";
 import { BaseSocketConfig } from "../../BaseSocket/interfaces/BaseSocketConfig";
+import { ReadyState } from "../../BaseSocket/interfaces/ReadyState";
 
 if (!require('is-node')) Buffer = require('buffer/').Buffer;
 const nodeBufferToArraybuffer = require('to-arraybuffer');
@@ -20,19 +21,26 @@ export class Socket extends BaseSocket {
 
     protected _sendData(data: Buffer): Promise<void> {
         return new Promise((resolve, reject) => {
-            this._socket.send(nodeBufferToArraybuffer(data));  //不可以直接发送buffer
-
-            const check = (interval: number) => {
-                setTimeout(() => {
-                    if (this._socket.bufferedAmount === 0) {
-                        resolve();
+            if (this.readyState === ReadyState.OPEN) {  //确保网络连接还打开着
+                this._socket.send(nodeBufferToArraybuffer(data));  //不可以直接发送buffer
+                const check = (interval: number) => {
+                    if (this.readyState === ReadyState.OPEN) {  //确保网络连接还打开着
+                        setTimeout(() => {
+                            if (this._socket.bufferedAmount === 0) {
+                                resolve();
+                            } else {
+                                check(interval >= 2000 ? 2000 : interval * 2); //最慢2秒检查一次
+                            }
+                        }, interval);
                     } else {
-                        check(interval >= 2000 ? 2000 : interval * 2); //最慢2秒检查一次
+                        reject('网络中断');
                     }
-                }, interval);
-            }
+                }
 
-            check(1);
+                check(1);
+            } else {
+                reject('网络中断');
+            }
         });
     }
 

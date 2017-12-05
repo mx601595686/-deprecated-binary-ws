@@ -58,7 +58,7 @@ ws.on('connection', socket => {
 
 server.listen(8080, () => {
     log('浏览器测试服务已启动！不同浏览器和各种网络环境请都测试一下。');
-    //opener('http://localhost:8080');
+    opener('http://localhost:8080');
 });
 
 server.on('close', () => log("浏览器测试服务已关闭！"));
