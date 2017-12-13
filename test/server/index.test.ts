@@ -220,6 +220,34 @@ describe('测试Server', function () {
             ss.emit('error', new Error());
         });
     });
+
+    describe('测试server端socket的header属性', function () {
+        let server: BWS.Server;
+        let c_socket: BWS.ServerSocket;
+
+        before(function (done) {
+            const hs = http.createServer();
+            hs.listen(8080);
+            server = new BWS.Server(hs, { url: 'ws://localhost:8080' });
+            server.on('error', err => { throw err });
+            server.on('listening', done);
+        });
+
+        after(function (done) {
+            server.on('close', done)
+            server.close();
+        });
+
+        it('测试header属性', function (done) {
+            server.on('connection', s_socket => {
+                expect(Object.keys(s_socket.headers).length).greaterThan(0);
+                expect(Object.keys(c_socket.headers).length).to.be(0);
+                done();
+            });
+
+            c_socket = new BWS.ServerSocket({ url: 'ws://localhost:8080' });
+        });
+    })
 });
 
 describe('测试ServerSocket', function () {
@@ -536,7 +564,7 @@ describe('压力测试', function () {
         c_socket.on('message', function (title, data) {
             expect(title).to.be(index2.toString());
             expect(data.toString()).to.be(index2.toString());
-            index2 ++;
+            index2++;
             if (index2 % 5 === 0) index2++;
 
             console.log(`[${(new Date()).toLocaleTimeString()}]`, 'index2', title);
@@ -550,9 +578,9 @@ describe('压力测试', function () {
         for (var index = 0; index < 1000; index++) {
             const m1 = s_socket.send(index.toString(), Buffer.from(index.toString()));
             const m2 = c_socket.send(index.toString(), Buffer.from(index.toString()));
-            
-            m1.catch(()=>{});
-            m2.catch(()=>{});
+
+            m1.catch(() => { });
+            m2.catch(() => { });
 
             if (index % 5 === 0) {
                 s_socket.cancel(m1.messageID);

@@ -43,8 +43,8 @@ export class Server extends Emitter {
         this._ws.on('error', this.emit.bind(this, 'error'));
         this._ws.once('listening', this.emit.bind(this, 'listening'));
 
-        this._ws.on('connection', client => {
-            const socket = new Socket(configs, client);
+        this._ws.on('connection', (client, req) => {
+            const socket = new Socket(configs, client, req);
             this.clients.set(socket.id, socket);
 
             socket.once('close', () => this.clients.delete(socket.id));

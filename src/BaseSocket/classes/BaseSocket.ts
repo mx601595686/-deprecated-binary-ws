@@ -39,6 +39,11 @@ export abstract class BaseSocket extends Emitter {
     readonly maxPayload: number;
 
     /**
+     * 该属性主要是为了方便保存一些运行期间的临时数据
+     */
+    session: any = {};
+
+    /**
      * 连接的当前状态
      */
     get readyState(): ReadyState {
