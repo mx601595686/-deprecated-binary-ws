@@ -4,7 +4,7 @@ import * as http from 'http';
 import * as https from 'https';
 import { URL } from 'url';
 
-import { Socket } from './Socket';
+import { ServerSocket } from './ServerSocket';
 import { BaseSocketConfig } from '../../BaseSocket/interfaces/BaseSocketConfig';
 
 export class Server extends Emitter {
@@ -16,7 +16,7 @@ export class Server extends Emitter {
     /**
      * 保存所有客户端连接。key是socket.id
      */
-    readonly clients: Map<number, Socket> = new Map();
+    readonly clients: Map<number, ServerSocket> = new Map();
 
     /**
      * 创建binary-ws Server。
@@ -32,44 +32,21 @@ export class Server extends Emitter {
         this._ws = new WS.Server({
             server,
             maxPayload: configs.maxPayload == null || configs.maxPayload <= 0 ? undefined : configs.maxPayload + 4, //多加4是因为title长度还会占一部分控件
-            path: configs.url && (new URL(configs.url)).pathname,
-            verifyClient: (info, cb) => {   //连接验证
-                this.verifyClient(info.req, info.origin, info.secure)
-                    .then((result => typeof result === 'boolean' ? cb(result) : cb(result.res, result.code, result.message)))
-                    .catch((err) => { cb(false); this.emit('error', err); });
-            }
+            path: (new URL(configs.url)).pathname
         });
 
         this._ws.on('error', this.emit.bind(this, 'error'));
         this._ws.once('listening', this.emit.bind(this, 'listening'));
 
         this._ws.on('connection', (client, req) => {
-            const socket = new Socket(configs, client, req);
+            const socket = new ServerSocket(configs, client);
             this.clients.set(socket.id, socket);
 
             socket.once('close', () => this.clients.delete(socket.id));
             socket.once('error', () => socket.close()); //接口如果出现异常则关闭
 
-            this.emit('connection', socket);
+            this.emit('connection', socket, req);
         });
-    }
-
-    /**
-     * 判断是否接受新的连接。    
-     * 返回true表示接受，返回false表示拒绝。也可以返回一个对象，提供更多信息。  
-     *  
-     * 返回对象：    
-     *      res {Boolean} Whether or not to accept the handshake.   
-     *      code {Number} When result is false this field determines the HTTP error status code to be sent to the client.   
-     *      name {String} When result is false this field determines the HTTP reason phrase.   
-     * 
-     * @param {http.IncomingMessage} req The client HTTP GET request.
-     * @param {string} origin The value in the Origin header indicated by the client.
-     * @param {boolean} secure 'true' if req.connection.authorized or req.connection.encrypted is set.
-     * @returns {Promise<boolean | { res: boolean, code?: number, message?: string }>} 
-     */
-    protected verifyClient(req: http.IncomingMessage, origin: string, secure: boolean): Promise<boolean | { res: boolean, code?: number, message?: string }> {
-        return Promise.resolve(true);
     }
 
     /**
@@ -86,9 +63,11 @@ export class Server extends Emitter {
      */
     on(event: 'listening', listener: () => void): this
     /**
-     * 当有新的客户端与服务器建立起连接
+     * 当有新的客户端与服务器建立起连接时触发。    
+     * req为客户端向服务器建立连接时发送的get请求，可通过这个进行一些用户验证。     
+     * 注意：如果用户未通过验证，记得执行socket.close()，服务器并不会自动断开连接。     
      */
-    on(event: 'connection', listener: (socket: Socket) => void): this
+    on(event: 'connection', listener: (socket: ServerSocket, req: http.IncomingMessage) => void): this
     on(event: 'close', listener: (err: Error) => void): this
     on(event: string, listener: Function): this {
         super.on(event, listener);
@@ -97,7 +76,7 @@ export class Server extends Emitter {
 
     once(event: 'error', listener: (err: Error) => void): this
     once(event: 'listening', listener: () => void): this
-    once(event: 'connection', listener: (socket: Socket) => void): this
+    once(event: 'connection', listener: (socket: ServerSocket, req: http.IncomingMessage) => void): this
     once(event: 'close', listener: (err: Error) => void): this
     once(event: string, listener: Function): this {
         super.once(event, listener);

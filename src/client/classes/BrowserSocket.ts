@@ -2,10 +2,10 @@ import { BaseSocket } from "../../BaseSocket/classes/BaseSocket";
 import { BaseSocketConfig } from "../../BaseSocket/interfaces/BaseSocketConfig";
 import { ReadyState } from "../../BaseSocket/interfaces/ReadyState";
 
-if (!require('is-node')) Buffer = require('buffer/').Buffer;
+if (Buffer == null) Buffer = require('buffer/').Buffer;
 const nodeBufferToArraybuffer = require('to-arraybuffer');
 
-export class Socket extends BaseSocket {
+export class BrowserSocket extends BaseSocket {
 
     protected readonly _socket: WebSocket;
 

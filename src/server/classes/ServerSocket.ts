@@ -4,21 +4,14 @@ import * as http from 'http';
 import { BaseSocket } from '../../BaseSocket/classes/BaseSocket';
 import { ServerSocketConfig } from '../interfaces/ServerSocketConfig';
 
-export class Socket extends BaseSocket {
+export class ServerSocket extends BaseSocket {
 
     protected readonly _socket: WS;
 
-    /**
-     * 客户端与服务器建立连接时，传递的http header。这个属性只有服务器端才有
-     */
-    readonly headers: any;
-
-    constructor(configs: ServerSocketConfig, _socket?: WS, _req?: http.IncomingMessage) {
+    constructor(configs: ServerSocketConfig, _socket?: WS) {
         const socket = _socket || new WS(configs.url, configs);
 
         super(socket, configs);
-
-        if (_req) this.headers = _req.headers; else this.headers = {};
 
         this._socket.on('open', this.emit.bind(this, 'open'));
         this._socket.on('close', this.emit.bind(this, 'close'));
