@@ -32,43 +32,6 @@ describe('测试Server', function () {
         });
     });
 
-    describe('测试verifyClient', function () {
-        class TestServer extends BWS.Server {
-            async verifyClient(req: http.IncomingMessage, origin: string, secure: boolean) {
-                if (req.headers.testheader === '123')
-                    return true;
-                else
-                    return { res: false, name: 'Message: testheader is undefined' };
-            }
-        }
-
-        let server: TestServer;
-
-        before(function (done) {
-            const hs = http.createServer();
-            hs.listen(8080);
-            server = new TestServer(hs, { url: 'ws://localhost:8080' });
-            server.on('error', err => { throw err });
-            server.on('listening', done);
-        });
-
-        after(function (done) {
-            server.on('close', done)
-            server.close();
-        });
-
-        it('带指定header', function (done) {
-            const client = new BWS.ServerSocket({ url: 'ws://localhost:8080', headers: { testHeader: '123' } });
-            client.on('open', done);
-        });
-
-        it('不带指定header', function (done) {
-            const client = new BWS.ServerSocket({ url: 'ws://localhost:8080' });
-            client.on('open', () => done(new Error('逻辑出现错误')));
-            client.on('error', (err) => done());
-        });
-    });
-
     describe('检查server.clients', function () {
 
         let server: BWS.Server;
@@ -220,34 +183,6 @@ describe('测试Server', function () {
             ss.emit('error', new Error());
         });
     });
-
-    describe('测试server端socket的header属性', function () {
-        let server: BWS.Server;
-        let c_socket: BWS.ServerSocket;
-
-        before(function (done) {
-            const hs = http.createServer();
-            hs.listen(8080);
-            server = new BWS.Server(hs, { url: 'ws://localhost:8080' });
-            server.on('error', err => { throw err });
-            server.on('listening', done);
-        });
-
-        after(function (done) {
-            server.on('close', done)
-            server.close();
-        });
-
-        it('测试header属性', function (done) {
-            server.on('connection', s_socket => {
-                expect(Object.keys(s_socket.headers).length).greaterThan(0);
-                expect(Object.keys(c_socket.headers).length).to.be(0);
-                done();
-            });
-
-            c_socket = new BWS.ServerSocket({ url: 'ws://localhost:8080' });
-        });
-    })
 });
 
 describe('测试ServerSocket', function () {
