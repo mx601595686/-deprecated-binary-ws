@@ -9,8 +9,10 @@ import { BaseSocketConfig } from '../interfaces/BaseSocketConfig';
  */
 export abstract class BaseSocket extends Emitter {
 
+    //#region 属性
+
     /**
-     * 每新建一个接口+1
+     * 每新建一个接口就+1
      */
     private static _id_Number = 0;
 
@@ -34,8 +36,14 @@ export abstract class BaseSocket extends Emitter {
      */
     readonly id: number;
 
+    /**
+     * 连接的url地址
+     */
     readonly url: string;
 
+    /**
+     * 单条消息的最大byte大小
+     */
     readonly maxPayload: number;
 
     /**
@@ -73,9 +81,11 @@ export abstract class BaseSocket extends Emitter {
 
         this.once('close', () => {    //如果断开，终止所有还未发送的消息。从后向前取消
             for (let item of [...this._sendingQueue.keys()].reverse())
-                this.cancel(item, new Error('连接中断'));
+                this.cancel(item, new Error('websocket 连接中断'));
         });
     }
+
+    //#endregion
 
     /**
      * 需要子类覆写。用于发送数据

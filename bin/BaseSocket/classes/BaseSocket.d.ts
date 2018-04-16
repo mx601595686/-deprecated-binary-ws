@@ -9,7 +9,7 @@ import { BaseSocketConfig } from '../interfaces/BaseSocketConfig';
  */
 export declare abstract class BaseSocket extends Emitter {
     /**
-     * 每新建一个接口+1
+     * 每新建一个接口就+1
      */
     private static _id_Number;
     /**
@@ -28,7 +28,13 @@ export declare abstract class BaseSocket extends Emitter {
      * 当前接口的id
      */
     readonly id: number;
+    /**
+     * 连接的url地址
+     */
     readonly url: string;
+    /**
+     * 单条消息的最大byte大小
+     */
     readonly maxPayload: number;
     /**
      * 该属性主要是为了方便用户保存一些运行期间的临时数据
