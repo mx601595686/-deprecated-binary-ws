@@ -1,5 +1,4 @@
 import * as WS from 'ws';
-import * as http from 'http';
 
 import { BaseSocket } from '../../BaseSocket/classes/BaseSocket';
 import { ServerSocketConfig } from '../interfaces/ServerSocketConfig';
